@@ -37,18 +37,18 @@ score(Team0, Team1) :-
 team(0).
 team(1).
 
-run_simulation(state(fieldSettings(_, _, _, _, WinningScore), _, _, _, score(Team0, Team1))) :-
+runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, _, _, score(Team0, Team1))) :-
     Team0 >= WinningScore,
     write("Team0 won");
     Team1 >= WinningScore,
     write("Team1 won").
 
-run_simulation(InitialState) :-
+runSimulation(InitialState) :-
     step(InitialState, NextState),
     NextState = state(_, _, ball(vector(X,Y), vector(Vx, Vy)), _, _),
     format('ball is at (~w, ~w) with velocity (~w, ~w)~n', [X, Y, Vx, Vy]),
     sleep(0.1),
-    run_simulation(NextState).
+    runSimulation(NextState).
 % round order:
 % ball moves
 % goal checking
