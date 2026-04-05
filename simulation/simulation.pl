@@ -1,4 +1,6 @@
 :- use_module(math).
+:- use_module(agent).
+:- use_module(controller).
 
 % fieldSettings contains any settings not related to the agents
 % vector(Width, Height) - width and height of the field
@@ -51,28 +53,40 @@ runSimulation(InitialState) :-
     format('ball is at (~w, ~w) with velocity (~w, ~w)~n', [X, Y, Vx, Vy]),
     sleep(0.04166666666),
     runSimulation(NextState).
+
 % round order:
 % ball moves
 % goal checking
+% if goal:
+% award points and reset round
+% if no goal:
 % ball bounces from any walls
 % ball velocity is dampened
-% agents moves
-% agents kick ball
-step(state(FieldSettings, AgentSettings, Ball, Agents, Score), state(FieldSettings, AgentSettings, NextBall, Agents, NextScore)) :-
+% agents take actions
+step(state(FieldSettings, AgentSettings, Ball, Agents, Score), state(FieldSettings, AgentSettings, NextBall, NextAgents, NextScore)) :-
     % update ball and check goal
     updateBallPosition(Ball, NextBall_1),
     checkGoal(FieldSettings, NextBall_1, Score, NextScore) ->
-        % TODO: reset state
-        true
+        resetRound(FieldSettings, Agents, NextAgents, NextBall)
         ;
         % ball needs to be reupdated in branch because the branch doesn't recognize NextBall_1 for some reason
         % TODO: maybe look into a cleaner way to do this part
         NextScore = Score,
         updateBallPosition(Ball, NextBall_1),
         updateBallWallBounce(FieldSettings, NextBall_1, NextBall_2),
-        dampenBall(FieldSettings, NextBall_2, NextBall).
+        dampenBall(FieldSettings, NextBall_2, NextBall_3),
+        updateAgents(AgentSettings, Agents, NextBall_3, NextAgents, NextBall).
 
+resetRound(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agents, NextAgents, NextBall) :-
+    resetAgents(AgentSettings, Agents, NextAgents),
+    BallStartX is Width / 2,
+    BallStartY is Height / 2,
+    NextBall = ball(vector(BallStartX, BallStartY), vector(0,0)).
 
+resetAgents(_, [], []).
+resetAgents(AgentSettings, [Agent | T], [NextAgent | Agents]) :-
+    resetAgent(AgentSettings, Agent, NextAgent),
+    resetAgents(AgentSettings, T, Agents).
 
 updateBallPosition(ball(Position, Velocity), ball(NextPosition, Velocity)) :-
     add(Position, Velocity, NextPosition).
@@ -126,3 +140,33 @@ ballWithinYThreshold(FieldHeight, GoalSize, BallY) :-
     ShiftedBallY is abs(BallY - (FieldHeight/2)),
     Threshold is FieldHeight * (GoalSize / 2),
     ShiftedBallY =< Threshold.
+
+updateAgents(_, [], Ball, [], Ball).
+updateAgents(AgentSettings, [Agent | T], Ball, [NextAgent | Agents], NextBall) :-
+    append(T, Agents, OtherAgents),
+    updateAgent(AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall_1),
+    updateAgents(AgentSettings, T, NextBall_1, Agents, NextBall).
+
+updateAgent(AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
+    Agent = agent(_, _, _, _, _, _, Controller),
+    control(Controller, AgentSettings, Agent, OtherAgents, Ball, Action),
+    takeAction(Action, AgentSettings, Agent, Ball, NextAgent, NextBall).
+
+takeAction(action(move, TargetPosition, DistanceFactor), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
+    canMove(AgentSettings, Agent, TargetPosition, DistanceFactor) ->
+        moveTowards(AgentSettings, Agent, TargetPosition, DistanceFactor, NextAgent),
+        NextBall = Ball
+        ;
+        rest(AgentSettings, Agent, NextAgent),
+        NextBall = Ball.
+
+takeAction(action(kick, KickDirection, KickStrengthFactor), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
+    canKick(AgentSettings, Agent, Ball, KickStrengthFactor) ->
+        kick(AgentSettings, Agent, Ball, KickDirection, KickStrengthFactor, NextAgent, NextBall)
+        ;
+        rest(AgentSettings, Agent, NextAgent),
+        NextBall = Ball.
+
+takeAction(action(rest), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
+    rest(AgentSettings, Agent, NextAgent),
+    NextBall = Ball.
