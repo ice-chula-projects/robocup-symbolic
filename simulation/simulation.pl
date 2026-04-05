@@ -41,7 +41,7 @@ run_simulation(state(fieldSettings(_, _, _, _, WinningScore), _, _, _, score(Tea
     Team0 >= WinningScore,
     write("Team0 won");
     Team1 >= WinningScore,
-    write("Team0 won").
+    write("Team1 won").
 
 run_simulation(InitialState) :-
     step(InitialState, NextState),
