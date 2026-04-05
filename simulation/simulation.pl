@@ -49,7 +49,7 @@ runSimulation(InitialState) :-
     step(InitialState, NextState),
     NextState = state(_, _, ball(vector(X,Y), vector(Vx, Vy)), _, _),
     format('ball is at (~w, ~w) with velocity (~w, ~w)~n', [X, Y, Vx, Vy]),
-    sleep(0.1),
+    sleep(0.04166666666),
     runSimulation(NextState).
 % round order:
 % ball moves
