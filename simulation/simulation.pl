@@ -17,7 +17,9 @@ fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, 
     number(BallDampening),
     withinRange(0, 1, BallDampening),
     number(BallWallDampening),
-    withinRange(0, 1, BallWallDampening).
+    withinRange(0, 1, BallWallDampening),
+    integer(WinningScore),
+    WinningScore > 0.
 
 
 % ball stores position and velocity of the ball
