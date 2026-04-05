@@ -1,4 +1,4 @@
-:- module(math, [vector/2, withinRange/3, add/3, scale/3, distance/3]).
+:- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2]).
 
 vector(X, Y) :-
     number(X),
