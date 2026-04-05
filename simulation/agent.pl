@@ -1,4 +1,4 @@
-:- module(agent, [agentSettings/7, moveTowards/6]).
+:- module(agent, [agentSettings/7, agent/6, canKick/4, kick/7, canMove/4 moveTowards/6]).
 :- use_module(math).
 
 % AgentSettings
