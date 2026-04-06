@@ -1,4 +1,4 @@
-:- module(agent, [agentSettings/9, agent/7, canKick/4, kick/7, canMove/3, moveTowards/6, rest/3, resetAgent/3]).
+:- module(agent, [agentSettings/9, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3]).
 :- use_module(math).
 :- use_module(controller, [controller/1]).
 
@@ -75,7 +75,7 @@ kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, C
 
 % checks if an agent has enough energy to move with the specified distanceFactor
 % takes into account energy regeneration
-canMove(AgentSettings, agent(_, _, _, Energy, _, _, _, _), DistanceFactor) :-
+canMove(AgentSettings, agent(_, _, _, Energy, _, _, _), DistanceFactor) :-
     AgentSettings = agentSettings(_, _, _, RunMaxDistance, _, _, EnergyRegenerationPerTick, _, _),
     EffectiveRunDistance is RunMaxDistance * DistanceFactor,
     movementEnergyCost(AgentSettings, EffectiveRunDistance, EnergyCost),

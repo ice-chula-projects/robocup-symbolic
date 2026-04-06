@@ -234,17 +234,17 @@ dampenBall(fieldSettings(_, _, BallDampening, _, _), ball(Position, Velocity), b
 % calling updateAgent(NextBall_1, NextBall_2)
 % ...
 % calling updateAgent(NextBall_n, NextBall)
-updateAgents(_, [], Ball, [], Ball).
-updateAgents(AgentSettings, [Agent | T], Ball, [NextAgent | Agents], NextBall) :-
+updateAgents(_, _, [], Ball, [], Ball).
+updateAgents(FieldSettings, AgentSettings, [Agent | T], Ball, [NextAgent | Agents], NextBall) :-
     append(T, Agents, OtherAgents),
-    updateAgent(AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall_1),
-    updateAgents(AgentSettings, T, NextBall_1, Agents, NextBall).
+    updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall_1),
+    updateAgents(FieldSettings, AgentSettings, T, NextBall_1, Agents, NextBall).
 
 % sends information about the game to the agent's controller
 % then calls takeAction() on the action to process tat action
-updateAgent(AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
+updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
     Agent = agent(_, _, _, _, _, _, Controller),
-    control(Controller, AgentSettings, Agent, OtherAgents, Ball, Action),
+    control(Controller, FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action),
     takeAction(Action, AgentSettings, Agent, Ball, NextAgent, NextBall).
 
 % handle the move command
