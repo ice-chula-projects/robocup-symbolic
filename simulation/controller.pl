@@ -33,6 +33,13 @@ control(controller(simple), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
         Ball = ball(BallPosition, _),
         Action = action(move, BallPosition, 1).
 
+control(controller(defender), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, _, Ball, Action) :-
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        GoalHeight is Height/2,
+        Action = action(kick, vector(Width,GoalHeight), 1);
+        Ball = ball(BallPosition, _),
+        Action = action(move, BallPosition, 1).
+
 mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
     NextPositionX is Width - PositionX.
 

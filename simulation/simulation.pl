@@ -39,7 +39,8 @@ state(fieldSettings(_, _, _, _, _), agentSettings(_, _, _, _), gameState(_,_,_,_
 % Score
 % shape score(Team0, Team1)
 score(Team0, Team1) :-
-    number(Team0, Team1).
+    number(Team0),
+    number(Team1).
 
 % team 0 is left
 % team 1 is right
