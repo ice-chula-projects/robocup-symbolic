@@ -1,4 +1,4 @@
-:- module(agent, [agentSettings/9, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3]).
+:- module(agent, [agentSettings/9, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3, deviateKick/3]).
 :- use_module(math).
 :- use_module(controller, [controller/1]).
 
@@ -9,7 +9,7 @@
 % RunMaxDistance - Max distance an agent is able to move in 1 tick
 % RunBaseEnergy - Energy Expended when an agent moves a distance of 1 unit
 % RestFactor - How many times faster to regenerate energy while resting
-% KickDeviation - How uncertain kick angles are (for example, kick in direction D may have it's angle be nudged by up to +-KickDeviation) (UNIMPLEMENTED)
+% KickDeviation - Kick angles are deviated up to +- KickDeviation degrees.
 % shape agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBaseEnergy, RestFactor)
 agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBaseEnergy, MaxEnergy, EnergyRegenerationPerTick, RestFactor, KickDeviation) :-
     number(KickReach),
@@ -64,8 +64,8 @@ kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, C
 
     EffetiveKickStrength is KickMaxStrength * KickStrengthFactor,
     sub(KickTowardsPosition, Position, KickDirection),
-    normalize(KickDirection, KickDirectionNormalized),
-    scale(KickDirectionNormalized, EffetiveKickStrength, BallVelocityChangeVector),
+    deviateKick(AgentSettings, KickDirection, DeviatedKickDirection),
+    scale(DeviatedKickDirection, EffetiveKickStrength, BallVelocityChangeVector),
     add(BallVelocity, BallVelocityChangeVector, NextBallVelocity),
     
     kickEnergyCost(AgentSettings, KickStrengthFactor, EnergyCost),
@@ -149,3 +149,11 @@ movementEnergyCost(agentSettings(_, _, _, _, RunBaseEnergy, _, _, _, _), Distanc
 % lineraly interpolates between 0 and KickMaxEnergy using KickStrengthFactor
 kickEnergyCost(agentSettings(_, _, KickMaxEnergy, _, _, _, _, _, _), KickStrengthFactor, EnergyCost) :-
     EnergyCost is KickMaxEnergy * KickStrengthFactor.
+
+deviateKick(agentSettings(_, _, _, _, _, _, _, _, KickDeviation), DirectionVector, NextDirectionVector) :-
+    toPolar(DirectionVector, polar(_, Theta)),
+    FloatKickDeviation is float(KickDeviation),
+    NegativeKickDeviation is FloatKickDeviation * -1.0,
+    random(NegativeKickDeviation, FloatKickDeviation, Deviation),
+    NextTheta is Theta + (Deviation * pi/180),
+    toVector(polar(1, NextTheta), NextDirectionVector).

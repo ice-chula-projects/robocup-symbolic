@@ -1,8 +1,20 @@
-:- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2]).
+:- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2, polar/2, toVector/2, toPolar/2]).
 
 vector(X, Y) :-
     number(X),
     number(Y).
+
+polar(r, theta) :-
+    number(r),
+    number(theta).
+
+toVector(polar(R, Theta), vector(X,Y)) :-
+    X is R * cos(Theta),
+    Y is R * sin(Theta).
+
+toPolar(vector(X,Y), polar(R, Theta)) :-
+    magnitude(vector(X,Y), R),
+    Theta is atan2(Y,X).
 
 % checks if X is between L and H inclusive
 withinRange(L, H, X) :-

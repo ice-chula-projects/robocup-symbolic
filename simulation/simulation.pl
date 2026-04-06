@@ -154,7 +154,7 @@ step(state(FieldSettings, AgentSettings, gameState(Ball, Agents, Round, Score)),
         updateBallPosition(Ball, NextBall_1),
         updateBallWallBounce(FieldSettings, NextBall_1, NextBall_2),
         dampenBall(FieldSettings, NextBall_2, NextBall_3),
-        updateAgents(AgentSettings, Agents, NextBall_3, NextAgents, NextBall).
+        updateAgents(FieldSettings, AgentSettings, Agents, NextBall_3, NextAgents, NextBall).
 
 % returns all agents to initial poition (defined within the agent itself)
 % and returns the ball to the center with 0 velocity
