@@ -34,7 +34,7 @@ gameState(ball(_, _), _, _, score(_,_)).
 
 % state stores the state of the game with settings
 % shape: state(FieldSettings, AgentSettings, GameState)
-state(fieldSettings(_, _, _, _, _), agentSettings(_, _, _, _, _, _, _, _, _), gameState(_,_,_,_)).
+state(fieldSettings(_, _, _, _, _), agentSettings(_, _, _, _), gameState(_,_,_,_)).
 
 % Score
 % shape score(Team0, Team1)
@@ -60,7 +60,7 @@ runSimulation(InitialState, [NextGameState | GameStates]) :-
     NextState = state(_, _, NextGameState),
     runSimulation(NextState, GameStates).
 
-exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBaseEnergy, MaxEnergy, EnergyRegenerationPerTick, RestFactor, KickDeviation), GameStates) :-
+exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunBaseEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation)), GameStates) :-
     gameStatesToJson(GameStates, GameStateJsons),
     GameJson = json{
         fieldSettings: json{
@@ -74,15 +74,25 @@ exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWal
             winningScore: WinningScore
         },
         agentSettings: json{
-            kickReach: KickReach,
-            kickMaxStrength: KickMaxStrength,
-            kickMaxEnergy: KickMaxEnergy,
-            runMaxDistance: RunMaxDistance,
-            runBaseEnergy: RunBaseEnergy,
-            maxEnergy: MaxEnergy,
-            energyRegenerationPerTick: EnergyRegenerationPerTick,
-            restFactor: RestFactor,
-            kickDeviation: KickDeviation
+           kickSettings: json{
+                kickReach: KickReach,
+                kickMaxStrength: KickMaxStrength,
+                kickMaxEnergy: KickMaxEnergy
+           },
+           runSettings: json{
+                runMaxDistance: RunMaxDistance,
+                runBaseEnergy: RunBaseEnergy
+           },
+           energySettings: json{
+                maxEnergy: MaxEnergy,
+                energyRegenerationPerTick: EnergyRegenerationPerTick
+           },
+           deviationSettings: json{
+                kickAngleDeviation: KickAngleDeviation,
+                kickStrengthDeviation: KickStrengthDeviation,
+                runDistanceDeviation: RunDistanceDeviation,
+                energyRegenerationDeviation: EnergyRegenerationDeviation
+           }
         },
         gameStates: GameStateJsons
     },
@@ -243,14 +253,12 @@ updateAgents(FieldSettings, AgentSettings, [Agent | T], Ball, [NextAgent | Agent
 % sends information about the game to the agent's controller
 % then calls takeAction() on the action to process tat action
 updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
-    Agent = agent(_, _, _, _, Team, _, Controller),
-    Team = team(0),
+    Agent = agent(_, _, _, _, team(0), _, Controller),
     control(Controller, FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action),
     takeAction(Action, AgentSettings, Agent, Ball, NextAgent, NextBall).
 
 updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
-    Agent = agent(_, _, _, _, Team, _, Controller),
-    Team = team(1),
+    Agent = agent(_, _, _, _, team(1), _, Controller),
     mirrorAgent(FieldSettings, Agent, MirroredAgent),
     mirrorAgents(FieldSettings, OtherAgents, MirroredOtherAgents),
     mirrorBall(FieldSettings, Ball, MirroredBall),

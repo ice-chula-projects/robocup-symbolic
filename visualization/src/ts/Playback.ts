@@ -18,15 +18,26 @@ export type FieldSettings = {
 }
 
 export type AgentSettings = {
-    kickReach: number,
-    kickMaxStrength: number,
-    kickMaxEnergy: number,
-    runMaxDistance: number,
-    runBaseEnergy: number,
-    maxEnergy: number,
-    energyRegenerationPerTick: number,
-    restFactor: number,
-    kickDeviation: number
+    kickSettings: {
+        kickReach: number,
+        kickMaxStrength: number,
+        kickMaxEnergy: number,
+    
+    },
+    runSettings: {
+        runMaxDistance: number,
+        runBaseEnergy: number,
+    },
+    energySettings: {
+        maxEnergy: number,
+        energyRegenerationPerTick: number,
+    },
+    deviationSettings: {
+        kickAngleDeviation: number,
+        kickStrengthDeviation: number,
+        runDistanceDeviation: number,
+        energyRegenerationDeviation: number
+    }
 }
 
 export type GameState = {
