@@ -4,6 +4,7 @@ vector(X, Y) :-
     number(X),
     number(Y).
 
+% checks if X is between L and H inclusive
 withinRange(L, H, X) :-
     number(L),
     number(H),
@@ -29,6 +30,7 @@ sub(vector(X1, Y1), vector(X2, Y2), vector(Xr, Yr)) :-
     Xr is X1 - X2,
     Yr is Y1 - Y2.
 
+% scales a vector by some factor
 scale(vector(X1,Y1), Factor, vector(Xr, Yr)) :-
     number(Factor),
     Xr is X1 * Factor,
@@ -37,6 +39,8 @@ scale(vector(X1,Y1), Factor, vector(Xr, Yr)) :-
 magnitude(vector(X,Y), M) :-
     M is sqrt(X*X + Y*Y).
 
+% pretends the 2 vectors are points and
+% returns the distance between those 2 points
 distance(V1, V2, D) :-
     sub(V1, V2, Vr),
     magnitude(Vr, D).

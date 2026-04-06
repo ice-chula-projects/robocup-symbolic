@@ -1,5 +1,6 @@
-:- module(agent, [agentSettings/8, agent/7, canKick/4, kick/7, canMove/4, moveTowards/6, rest/3, resetAgent/3]).
+:- module(agent, [agentSettings/8, agent/7, canKick/4, kick/7, canMove/3, moveTowards/6, rest/3, resetAgent/3]).
 :- use_module(math).
+:- use_module(controller, [controller/1]).
 
 % AgentSettings
 % KickReach - Max distance an agent is able to kick
@@ -35,59 +36,73 @@ agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBase
 % team - which team the agent is on
 % IntialPosition - where the agent starts on round reset
 % Controller - the id to the agent's controller
-% shape: agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team), controller(Controller)).
-agent(_, _, Position, Energy, team(0), InitialPosition, Controller).
+% shape: agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team), InitialPosition, controller(Controller)).
+agent(_, _, vector(PositionX, PositionY), Energy, team(Team), vector(IntialPositionX, InitialPositionY), controller(Controller)).
 
+% checks if an agent can kick
+% first checks if the ball is within the reach of the kick
+% then also checks if the agent has enough energy to kick with the desired KickStrengthFactor
+% takes into account energy regeneration
 canKick(AgentSettings, agent(_, _, Position, Energy, _, _, _), ball(BallPosition, _), KickStrengthFactor) :-
     AgentSettings = agentSettings(KickReach, _, _, _, _, _, EnergyRegenerationPerTick, _),
     distance(Position, BallPosition, Distance),
     Distance =< KickReach,
-    withinRange(0,1,KickStrengthFactor),
     kickEnergyCost(AgentSettings, KickStrengthFactor, EnergyCost),
     EffectiveEnergy is Energy + EnergyRegenerationPerTick,
     EffectiveEnergy >= EnergyCost.
 
+% performs a kick (does not do check if the agent can actually kick the ball as that is expected to be handled by the engine)
+% Adds a vector with length EffetiveKickStrength, in the same direction as the KickDirection vector to
+% the velocity of the ball
+% then subtracts the appropriate amount of energy and add energy regeneration
+% finally calls clampEnergy() to ensure energy is not above max  
 kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), ball(BallPosition, BallVelocity), KickDirection, KickStrengthFactor, agent(Name, Role, Position, NextEnergy, Team, InitialPosition, Controller), ball(BallPosition, NextBallVelocity)) :-
-    canKick(AgentSettings, agent(_, _, Position, Energy, _, _, _), ball(BallPosition, BallVelocity), KickStrengthFactor),
     AgentSettings = agentSettings(_, KickMaxStrength, _, _, _, _, EnergyRegenerationPerTick, _),
+
     EffetiveKickStrength is KickMaxStrength * KickStrengthFactor,
     normalize(KickDirection, KickDirectionNormalized),
     scale(KickDirectionNormalized, EffetiveKickStrength, BallVelocityChangeVector),
     add(BallVelocity, BallVelocityChangeVector, NextBallVelocity),
+    
     kickEnergyCost(AgentSettings, KickStrengthFactor, EnergyCost),
     NextEnergy_1 is Energy - EnergyCost + EnergyRegenerationPerTick,
     clampEnergy(AgentSettings, NextEnergy_1, NextEnergy).
 
-canMove(AgentSettings, agent(_, _, Position, Energy, _, _, _), TargetPosition, DistanceFactor) :-
-    AgentSettings = agentSettings(_, _, _, _, _, _, EnergyRegenerationPerTick, _),
-    distance(Position, TargetPosition, Distance),
-    withinRange(0, 1, DistanceFactor),
-    EffectiveDistance is Distance * DistanceFactor,
-    movementEnergyCost(AgentSettings, EffectiveDistance, EnergyCost),
+
+% checks if an agent has enough energy to move with the specified distanceFactor
+% takes into account energy regeneration
+canMove(AgentSettings, agent(_, _, _, Energy, _, _, _), DistanceFactor) :-
+    AgentSettings = agentSettings(_, _, _, RunMaxDistance, _, _, EnergyRegenerationPerTick, _),
+    EffectiveRunDistance is RunMaxDistance * DistanceFactor,
+    movementEnergyCost(AgentSettings, EffectiveRunDistance, EnergyCost),
     EffectiveEnergy is Energy + EnergyRegenerationPerTick,
     EffectiveEnergy >= EnergyCost.
 
+% moves the agent towards the TargetPosition, using DistanceFactor to determine the max distance the agent can travel
+% then applies energy regeneration
+% and calls clampEnergy to ensure energy is not above max
 moveTowards(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), TargetPosition, DistanceFactor, agent(Name, Role, NextPosition, NextEnergy, Team, InitialPosition, Controller)) :-
     AgentSettings = agentSettings(_, _, _, _, _, _, EnergyRegenerationPerTick, _),
-    canMove(AgentSettings, agent(_, _, Position, Energy, _, _, _), TargetPosition, DistanceFactor),
     moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPosition, EnergyCost),
     NextEnergy_1 is Energy - EnergyCost + EnergyRegenerationPerTick,
     clampEnergy(AgentSettings, NextEnergy_1, NextEnergy).
 
-%case distance is within range 
+% case distance is within max range
+% move the agent directly onto TargetPosition
+% and subtract energy to the distance traveled accordingly
 moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPosition, EnergyCost) :-
     AgentSettings = agentSettings(_, _, _, RunMaxDistance, _, _, _, _),
-    withinRange(0, 1, DistanceFactor),
     EffectiveRunMaxDistance is DistanceFactor * RunMaxDistance,
     distance(Position, TargetPosition, Distance),
     Distance =< EffectiveRunMaxDistance,
     movementEnergyCost(AgentSettings, Distance, EnergyCost),
     NextPosition = TargetPosition.
 
-%case distance is out of max range
+% case distance is out of max range
+% move the agent a distance of EffectiveRunMaxDistance in the direction of TargetPosition
+% and subtract energy to the distance traveled accordingly
 moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPosition, EnergyCost) :-
     AgentSettings = agentSettings(_, _, _, RunMaxDistance, _, _, _, _),
-    withinRange(0, 1, DistanceFactor),
     EffectiveRunMaxDistance is DistanceFactor * RunMaxDistance,
     distance(Position, TargetPosition, Distance),
     Distance > EffectiveRunMaxDistance,
@@ -101,19 +116,26 @@ moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPositio
     scale(DirectionVector, EffectiveRunMaxDistance, MovementVector),
     add(Position, MovementVector, NextPosition).
 
+% increases energy regeneration by restFactor for that turn
+% then calls clampEnergy() to make sure energy isnt above max
 rest(agentSettings(_, _, _, _, _, MaxEnergy, EnergyRegenerationPerTick, RestFactor), agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), agent(Name, Role, Position, NextEnergy, Team, InitialPosition, Controller)) :-
     NextEnergy_1 is Energy + (EnergyRegenerationPerTick * RestFactor),
     clampEnergy(agentSettings(_, _, _, _, _, MaxEnergy, _, _), NextEnergy_1, NextEnergy).
 
+% sets the agent position to initial position
+% and also set the agent energy to MaxEnergy
 resetAgent(agentSettings(_, _, _, _, _, MaxEnergy, _, _), agent(Name, Role, _, _, Team, InitialPosition, Controller), agent(Name, Role, NextPosition, NextEnergy, Team, InitialPosition, Controller)) :-
     NextPosition = InitialPosition,
     NextEnergy = MaxEnergy.
 
+% ensures the energy isn't above MaxEnergy
+% by clamping it
 clampEnergy(agentSettings(_, _, _, _, _, MaxEnergy, _, _), Energy, NextEnergy) :-
     Energy > MaxEnergy ->
         NextEnergy = MaxEnergy
         ;
         NextEnergy = Energy.
+
 % formula: https://www.desmos.com/calculator/2th08sixr7
 % the logic is that moving a distance of 1 takes RunBaseEnergy of Energy
 % then for every doubling of RunBaseEnergy the distance is multiplied by 1.5
@@ -124,6 +146,6 @@ clampEnergy(agentSettings(_, _, _, _, _, MaxEnergy, _, _), Energy, NextEnergy) :
 movementEnergyCost(agentSettings(_, _, _, _, RunBaseEnergy, _, _, _), Distance, EnergyCost) :-
     EnergyCost is RunBaseEnergy * (5.52626008648 ** log(Distance)).
 
+% lineraly interpolates between 0 and KickMaxEnergy using KickStrengthFactor
 kickEnergyCost(agentSettings(_, _, KickMaxEnergy, _, _, _, _, _), KickStrengthFactor, EnergyCost) :-
-    withinRange(0,1, KickStrengthFactor),
     EnergyCost is KickMaxEnergy * KickStrengthFactor.
