@@ -243,9 +243,21 @@ updateAgents(FieldSettings, AgentSettings, [Agent | T], Ball, [NextAgent | Agent
 % sends information about the game to the agent's controller
 % then calls takeAction() on the action to process tat action
 updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
-    Agent = agent(_, _, _, _, _, _, Controller),
+    Agent = agent(_, _, _, _, Team, _, Controller),
+    Team = team(0),
     control(Controller, FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action),
     takeAction(Action, AgentSettings, Agent, Ball, NextAgent, NextBall).
+
+updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
+    Agent = agent(_, _, _, _, Team, _, Controller),
+    Team = team(1),
+    mirrorAgent(FieldSettings, Agent, MirroredAgent),
+    mirrorAgents(FieldSettings, OtherAgents, MirroredOtherAgents),
+    mirrorBall(FieldSettings, Ball, MirroredBall),
+    control(Controller, FieldSettings, AgentSettings, MirroredAgent, MirroredOtherAgents, MirroredBall, Action),
+    mirrorAction(FieldSettings, Action, MirroredAction),
+    takeAction(MirroredAction, AgentSettings, Agent, Ball, NextAgent, NextBall).
+
 
 % handle the move command
 % if agent doesn't have enough energy to do so defaults to the rest command

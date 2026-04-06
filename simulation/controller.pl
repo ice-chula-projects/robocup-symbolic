@@ -1,4 +1,4 @@
-:- module(controller, [action/1, action/3, controller/1, control/7]).
+:- module(controller, [action/1, action/3, controller/1, control/7, mirrorPosition/3, mirrorAgent/3, mirrorAgents/3, mirrorAction/3, mirrorBall/3]).
 :- use_module(math).
 :- use_module(agent).
 
@@ -32,3 +32,22 @@ control(controller(simple), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
         Action = action(kick, vector(Width,GoalHeight), 1);
         Ball = ball(BallPosition, _),
         Action = action(move, BallPosition, 1).
+
+mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
+    NextPositionX is Width - PositionX.
+
+mirrorAction(FieldSettings, action(Name, Position, Factor), action(Name, MirroredPosition, Factor)) :-
+    mirrorPosition(FieldSettings, Position, MirroredPosition).
+
+mirrorBall(FieldSettings, ball(Position, Velocity), ball(MirroredPosition, MirroredVelocity)) :-
+    mirrorPosition(FieldSettings, Position, MirroredPosition),
+    mirrorPosition(FieldSettings, Velocity, MirroredVelocity).
+
+mirrorAgent(FieldSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), agent(Name, Role, MirroredPosition, Energy, Team, MirroredInitialPosition, Controller)) :-
+    mirrorPosition(FieldSettings, Position, MirroredPosition),
+    mirrorPosition(FieldSettings, InitialPosition, MirroredInitialPosition).
+
+mirrorAgents(_, [], []).
+mirrorAgents(FieldSettings, [Agent | T], [MirroredAgent | Agents]) :-
+    mirrorAgent(FieldSettings, Agent, MirroredAgent),
+    mirrorAgents(FieldSettings, T, Agents).
