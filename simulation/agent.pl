@@ -52,14 +52,15 @@ canKick(AgentSettings, agent(_, _, Position, Energy, _, _, _), ball(BallPosition
     EffectiveEnergy >= EnergyCost.
 
 % performs a kick (does not do check if the agent can actually kick the ball as that is expected to be handled by the engine)
-% Adds a vector with length EffetiveKickStrength, in the same direction as the KickDirection vector to
-% the velocity of the ball
+% Adds a vector with length EffetiveKickStrength, in the direction of KickTowardsPosition
+% to the velocity of the ball
 % then subtracts the appropriate amount of energy and add energy regeneration
 % finally calls clampEnergy() to ensure energy is not above max  
-kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), ball(BallPosition, BallVelocity), KickDirection, KickStrengthFactor, agent(Name, Role, Position, NextEnergy, Team, InitialPosition, Controller), ball(BallPosition, NextBallVelocity)) :-
+kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), ball(BallPosition, BallVelocity), KickTowardsPosition, KickStrengthFactor, agent(Name, Role, Position, NextEnergy, Team, InitialPosition, Controller), ball(BallPosition, NextBallVelocity)) :-
     AgentSettings = agentSettings(_, KickMaxStrength, _, _, _, _, EnergyRegenerationPerTick, _),
 
     EffetiveKickStrength is KickMaxStrength * KickStrengthFactor,
+    sub(KickTowardsPosition, Position, KickDirection),
     normalize(KickDirection, KickDirectionNormalized),
     scale(KickDirectionNormalized, EffetiveKickStrength, BallVelocityChangeVector),
     add(BallVelocity, BallVelocityChangeVector, NextBallVelocity),

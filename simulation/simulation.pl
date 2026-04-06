@@ -30,7 +30,7 @@ ball(vector(_, _), vector(_, _)).
 
 % state stores the state of the game
 % shape: state(FieldSettings, AgentSettings, Ball, Agents, Score)
-state(fieldSettings(_, _, _, _, _), _, ball(_, _), _, score(_, _)).
+state(fieldSettings(_, _, _, _, _), agentSettings(_, _, _, _, _, _, _, _), ball(_, _), _, score(_, _)).
 
 % Score
 % shape score(Team0, Team1)
@@ -180,9 +180,9 @@ takeAction(action(move, TargetPosition, DistanceFactor), AgentSettings, Agent, B
 
 %handle the kick command
 % if agent doesn't have enough energy to do so or the ball is'nt within range defaults to the rest command
-takeAction(action(kick, KickDirection, KickStrengthFactor), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
+takeAction(action(kick, KickTowardsPosition, KickStrengthFactor), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
     canKick(AgentSettings, Agent, Ball, KickStrengthFactor) ->
-        kick(AgentSettings, Agent, Ball, KickDirection, KickStrengthFactor, NextAgent, NextBall)
+        kick(AgentSettings, Agent, Ball, KickTowardsPosition, KickStrengthFactor, NextAgent, NextBall)
         ;
         rest(AgentSettings, Agent, NextAgent),
         NextBall = Ball.

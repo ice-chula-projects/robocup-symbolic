@@ -3,7 +3,7 @@
 
 action(move, vector(TargetPositionX, TargetPositionY), MovementFactor) :-
     withinRange(0, 1, MovementFactor).
-action(kick, vector(DirectionX, DirectionY), KickStrengthFactor) :-
+action(kick, vector(KickTowardsX, KickTowardsY), KickStrengthFactor) :-
     withinRange(0, 1, KickStrengthFactor).
 action(rest).
 
