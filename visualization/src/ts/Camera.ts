@@ -20,6 +20,7 @@ export default class Camera {
     team0Color: string = "blue";
     team1Color: string = "red";
     playerRadius: number = 10;
+    goalWidth: number = 25;
     
     lastMouseData: {
         x: number | null
@@ -96,6 +97,7 @@ export default class Camera {
         const topLeft = this.project(Vector2D.zero);
         const fieldDimensions = this.playback.currentGameLog.fieldSettings.dimensions;
 
+        context.fillStyle = this.borderColor;
         context.strokeStyle = this.borderColor;
         const borderWidth = this.borderWidth * this.zoom;
         context.lineWidth = borderWidth
@@ -104,7 +106,19 @@ export default class Camera {
         const nudge = this.ballRadius * this.zoom;
         context.beginPath();
         context.rect(topLeft.x - nudge, topLeft.y - nudge, fieldDimensions.width * this.zoom + 2 * nudge,  fieldDimensions.height * this.zoom + 2 * nudge);
+        context.closePath();
         context.stroke();
+
+        //draw goals
+        const goalHeight = this.playback.currentGameLog.fieldSettings.goalSize * fieldDimensions.height;
+        const team0GoalTopLeft = this.project(new Vector2D(-this.goalWidth, -goalHeight/2 + fieldDimensions.height/2))
+        const team1GoalTopLeft = this.project(new Vector2D(fieldDimensions.width, -goalHeight/2 + fieldDimensions.height/2))
+        context.beginPath();
+        context.rect(team0GoalTopLeft.x, team0GoalTopLeft.y, this.goalWidth * this.zoom - nudge, goalHeight * this.zoom);
+        context.rect(team1GoalTopLeft.x + nudge, team1GoalTopLeft.y, this.goalWidth * this.zoom, goalHeight * this.zoom);
+        context.closePath();
+
+        context.fill();
     
     }
 
