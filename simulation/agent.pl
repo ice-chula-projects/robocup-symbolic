@@ -158,7 +158,10 @@ clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _), Energy, NextEn
 % EnergyCost = 2 when distance = 1.5
 % EnergyCost = 4 when distance = 1.5 * 1.5
 movementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _), Distance, EnergyCost) :-
-    EnergyCost is RunBaseEnergy * (5.52626008648 ** log(Distance)).
+    Distance > 0 ->
+    EnergyCost is RunBaseEnergy * (5.52626008648 ** log(Distance))
+    ;
+    EnergyCost = 0.
 
 % lineraly interpolates between 0 and KickMaxEnergy using KickStrengthFactor
 kickEnergyCost(agentSettings(kickSettings(_, _, KickMaxEnergy), _, _, _), KickStrengthFactor, EnergyCost) :-
