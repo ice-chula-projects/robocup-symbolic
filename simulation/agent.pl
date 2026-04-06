@@ -28,8 +28,8 @@ agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBase
     EnergyRegenerationPerTick > 0,
     number(RestFactor),
     RestFactor > 1,
-    number(UncertaintyFactor),
-    UncertaintyFactor > 0.
+    number(KickDeviation),
+    KickDeviation > 0.
 
 % Agent
 % Name - a name to identify the agent by (not used in simulation logic)
@@ -40,7 +40,7 @@ agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBase
 % IntialPosition - where the agent starts on round reset
 % Controller - the id to the agent's controller
 % shape: agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team), InitialPosition, controller(Controller)).
-agent(_, _, vector(PositionX, PositionY), Energy, team(Team), vector(IntialPositionX, InitialPositionY), controller(Controller)).
+agent(_, _, vector(_, _), _, team(_), vector(_, _), controller(_)).
 
 % checks if an agent can kick
 % first checks if the ball is within the reach of the kick
