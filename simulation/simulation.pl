@@ -29,8 +29,12 @@ fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, 
 ball(vector(_, _), vector(_, _)).
 
 % state stores the state of the game
-% shape: state(FieldSettings, AgentSettings, Ball, Agents, Score)
-state(fieldSettings(_, _, _, _, _), agentSettings(_, _, _, _, _, _, _, _), ball(_, _), _, score(_, _)).
+% shape: gameState(ball, agents, round, score)
+gameState(ball(_, _), _, _, score(_,_)).
+
+% state stores the state of the game with settings
+% shape: state(FieldSettings, AgentSettings, GameState)
+state(fieldSettings(_, _, _, _, _), agentSettings(_, _, _, _, _, _, _, _, _), gameState(_,_,_,_)).
 
 % Score
 % shape score(Team0, Team1)
@@ -41,19 +45,92 @@ score(Team0, Team1) :-
 team(0).
 team(1).
 
-runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, _, _, score(Team0, Team1))) :-
-    Team0 >= WinningScore,
-    write("Team0 won");
-    Team1 >= WinningScore,
-    write("Team1 won").
-
 runSimulation(InitialState) :-
-    step(InitialState, NextState),
-    NextState = state(_, _, ball(vector(X,Y), vector(Vx, Vy)), _, _),
-    format('ball is at (~w, ~w) with velocity (~w, ~w)~n', [X, Y, Vx, Vy]),
-    sleep(0.04166666666),
-    runSimulation(NextState).
+    runSimulation(InitialState, GameStates),
+    InitialState = state(FieldSettings, AgentSettings, _),
+    exportState(FieldSettings, AgentSettings, GameStates),
+    !.
 
+runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, gameState(_, _, _, score(Team0, Team1))), []) :-
+    Team0 >= WinningScore;
+    Team1 >= WinningScore.
+
+runSimulation(InitialState, [NextGameState | GameStates]) :-
+    step(InitialState, NextState),
+    NextState = state(_, _, NextGameState),
+    runSimulation(NextState, GameStates).
+
+exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBaseEnergy, MaxEnergy, EnergyRegenerationPerTick, RestFactor, KickDeviation), GameStates) :-
+    gameStatesToJson(GameStates, GameStateJsons),
+    GameJson = json{
+        fieldSettings: json{
+            dimensions: json{
+                width: Width,
+                height: Height
+            },
+            goalSize: GoalSize,
+            ballDampening: BallDampening,
+            ballWallDampening: BallWallDampening,
+            winningScore: WinningScore
+        },
+        agentSettings: json{
+            kickReach: KickReach,
+            kickMaxStrength: KickMaxStrength,
+            kickMaxEnergy: KickMaxEnergy,
+            runMaxDistance: RunMaxDistance,
+            runBaseEnergy: RunBaseEnergy,
+            maxEnergy: MaxEnergy,
+            energyRegenerationPerTick: EnergyRegenerationPerTick,
+            restFactor: RestFactor,
+            kickDeviation: KickDeviation
+        },
+        gameStates: GameStateJsons
+    },
+    get_time(Time),
+    TimeInt is round(Time),
+    number_string(TimeInt, TimeString),
+    string_concat("../gamelogs/game_", TimeString, Path_1),
+    string_concat(Path_1, ".json", Path),
+    open(Path, write, Stream),
+    json_write_dict(Stream, GameJson, [width(0)]),
+    close(Stream).
+
+gameStatesToJson([], []).
+gameStatesToJson([gameState(ball(vector(BallPositionX, BallPositionY), vector(BallVelocityX, BallVelocityY)), Agents, Round, score(Team0, Team1)) | T], [GameStateJson | GameStateJsons]) :-
+    agentsToJson(Agents, AgentsJson),
+    GameStateJson = json{
+        ball: json{
+            position: json{
+                x: BallPositionX,
+                y: BallPositionY
+            },
+            velocity: json{
+                x: BallVelocityX,
+                y: BallVelocityY
+            }
+        },
+        agents: AgentsJson,
+        round: Round,
+        score: json{
+            team0: Team0,
+            team1: Team1
+        }
+    },
+    gameStatesToJson(T, GameStateJsons).
+
+agentsToJson([], []).
+agentsToJson([agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team), _, _) | T], [AgentJson | AgentJsons]) :-
+    AgentJson = json{
+        name: Name,
+        role: Role,
+        position: json{
+            x: PositionX,
+            y: PositionY
+        },
+        energy: Energy,
+        team: Team
+    },
+    agentsToJson(T, AgentJsons).
 % round order:
 % ball moves
 % goal checking
@@ -63,14 +140,16 @@ runSimulation(InitialState) :-
 % ball bounces from any walls
 % ball velocity is dampened
 % agents take actions
-step(state(FieldSettings, AgentSettings, Ball, Agents, Score), state(FieldSettings, AgentSettings, NextBall, NextAgents, NextScore)) :-
+step(state(FieldSettings, AgentSettings, gameState(Ball, Agents, Round, Score)), state(FieldSettings, AgentSettings, gameState(NextBall, NextAgents, NextRound, NextScore))) :-
     % update ball and check goal
     updateBallPosition(Ball, NextBall_1),
     checkGoal(FieldSettings, NextBall_1, Score, NextScore) ->
-        resetRound(FieldSettings, Agents, NextAgents, NextBall)
+        NextRound is Round + 1,
+        resetRound(FieldSettings, AgentSettings, Agents, NextAgents, NextBall)
         ;
         % ball needs to be reupdated in branch because the branch doesn't recognize NextBall_1 for some reason
         % TODO: maybe look into a cleaner way to do this part
+        NextRound = Round,
         NextScore = Score,
         updateBallPosition(Ball, NextBall_1),
         updateBallWallBounce(FieldSettings, NextBall_1, NextBall_2),
