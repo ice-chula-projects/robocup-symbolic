@@ -249,27 +249,31 @@ dampenBall(fieldSettings(_, _, BallDampening, _, _), ball(Position, Velocity), b
 % calling updateAgent(NextBall_1, NextBall_2)
 % ...
 % calling updateAgent(NextBall_n, NextBall)
-updateAgents(_, _, [], Ball, [], Ball).
-updateAgents(FieldSettings, AgentSettings, [Agent | T], Ball, [NextAgent | Agents], NextBall) :-
-    append(T, Agents, OtherAgents),
+updateAgents(FieldSettings, AgentSettings, Agents, Ball, NextAgents, NextBall) :-
+    updateAgents(FieldSettings, AgentSettings, Agents, [], Ball, NextAgents, NextBall).
+
+updateAgents(_, _, [], _, Ball, [], Ball).
+updateAgents(FieldSettings, AgentSettings, [Agent | T], ProcessedAgents, Ball, [NextAgent | Agents], NextBall) :-
+    append(T, ProcessedAgents, OtherAgents),
     updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall_1),
-    updateAgents(FieldSettings, AgentSettings, T, NextBall_1, Agents, NextBall).
+    append([NextAgent], ProcessedAgents, NextProcessedAgents),
+    updateAgents(FieldSettings, AgentSettings, T, NextProcessedAgents, NextBall_1, Agents, NextBall).
 
 % sends information about the game to the agent's controller
 % then calls takeAction() on the action to process tat action
 updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
     Agent = agent(_, _, _, _, team(0), _, Controller),
     control(Controller, FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action),
-    takeAction(Action, AgentSettings, Agent, Ball, NextAgent, NextBall).
+    takeAction(Action, AgentSettings, Agent, Ball, NextAgent, NextBall), !.
 
 updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
     Agent = agent(_, _, _, _, team(1), _, Controller),
     mirrorAgent(FieldSettings, Agent, MirroredAgent),
     mirrorAgents(FieldSettings, OtherAgents, MirroredOtherAgents),
     mirrorBall(FieldSettings, Ball, MirroredBall),
-    control(Controller, FieldSettings, AgentSettings, MirroredAgent, MirroredOtherAgents, MirroredBall, Action),
+    control(Controller, FieldSettings, AgentSettings, MirroredAgent, OtherAgents, MirroredBall, Action),
     mirrorAction(FieldSettings, Action, MirroredAction),
-    takeAction(MirroredAction, AgentSettings, Agent, Ball, NextAgent, NextBall).
+    takeAction(MirroredAction, AgentSettings, Agent, Ball, NextAgent, NextBall), !.
 
 updateAgentCollisions(_, _, [], []).
 updateAgentCollisions(FieldSettings, AgentSettings, [Agent | OtherUnresolvedAgents], [NextAgent | Agents]) :-
