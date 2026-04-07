@@ -64,9 +64,9 @@ mirrorAgent(FieldSettings, agent(Name, Role, Position, Energy, Team, InitialPosi
     mirrorTeam(Team, MirroredTeam).
 
 mirrorAgents(_, [], []).
-mirrorAgents(FieldSettings, [Agent | T], [MirroredAgent | Agents]) :-
+mirrorAgents(FieldSettings, [Agent | T], [MirroredAgent | MirroredAgents]) :-
     mirrorAgent(FieldSettings, Agent, MirroredAgent),
-    mirrorAgents(FieldSettings, T, Agents).
+    mirrorAgents(FieldSettings, T, MirroredAgents).
 
 
 agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
