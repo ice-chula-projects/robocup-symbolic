@@ -14,7 +14,6 @@ export default class Camera {
     borderColor = "white";
     team0Color = "blue";
     team1Color = "red";
-    playerRadius = 10;
     goalWidth = 25;
     lastMouseData = {};
     #targetFps = 60;
@@ -112,8 +111,11 @@ export default class Camera {
         context.beginPath();
         for (const agent of agents.filter(agent => agent.team == 0)) {
             const position = this.project(agent.position);
-            const radius = this.playerRadius * this.zoom;
-            context.arc(position.x, position.y, radius, 0, 2 * Math.PI);
+            let radius = this.playback.currentGameLog.agentSettings.agentRadius;
+            //backwards compatability
+            if (radius == null)
+                radius = 10;
+            context.arc(position.x, position.y, radius * this.zoom, 0, 2 * Math.PI);
         }
         context.closePath();
         context.fill();

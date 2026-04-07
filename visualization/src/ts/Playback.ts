@@ -37,7 +37,8 @@ export type AgentSettings = {
         kickStrengthDeviation: number,
         runDistanceDeviation: number,
         energyRegenerationDeviation: number
-    }
+    },
+    agentRadius: number
 }
 
 export type GameState = {

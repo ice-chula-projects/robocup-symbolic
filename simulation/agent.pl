@@ -1,4 +1,4 @@
-:- module(agent, [agentSettings/4, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3, deviate/3]).
+:- module(agent, [agentSettings/5, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3, deviate/3, isColliding/3, resolveCollision/5]).
 :- use_module(math).
 :- use_module(controller, [controller/1]).
 
@@ -40,7 +40,9 @@ deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviatio
 
 % AgentSettings
 % shape agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBaseEnergy, MaxEnergy, EnergyRegenerationPerTick, DeviationSettings)
-agentSettings(kickSettings(_, _, _), runSettings(_, _), energySettings(_, _), deviationSettings(_, _, _, _)).
+agentSettings(kickSettings(_, _, _), runSettings(_, _), energySettings(_, _), deviationSettings(_, _, _, _), AgentRadius) :-
+    number(AgentRadius),
+    AgentRadius > 0.
 
 % Agent
 % Name - a name to identify the agent by (not used in simulation logic)
@@ -57,7 +59,7 @@ agent(_, _, vector(_, _), _, team(_), vector(_, _), controller(_)).
 % first checks if the ball is within the reach of the kick
 % then also checks if the agent has enough energy to kick with the desired KickStrengthFactor
 canKick(AgentSettings, agent(_, _, Position, Energy, _, _, _), ball(BallPosition, _), KickStrengthFactor) :-
-    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _),
+    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     distance(Position, BallPosition, Distance),
     Distance =< KickReach,
     kickEnergyCost(AgentSettings, KickStrengthFactor, EnergyCost),
@@ -69,7 +71,7 @@ canKick(AgentSettings, agent(_, _, Position, Energy, _, _, _), ball(BallPosition
 % then subtracts the appropriate amount of energy and add energy regeneration
 % finally calls clampEnergy() to ensure energy is not above max  
 kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), ball(BallPosition, BallVelocity), KickTowardsPosition, KickStrengthFactor, agent(Name, Role, Position, NextEnergy, Team, InitialPosition, Controller), ball(BallPosition, NextBallVelocity)) :-
-    AgentSettings = agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _),
+    AgentSettings = agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _, _),
 
     EffetiveKickStrength is KickMaxStrength * KickStrengthFactor,
     deviateKickStrength(AgentSettings, EffetiveKickStrength, DeviatedKickStrength),
@@ -87,7 +89,7 @@ kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, C
 % checks if an agent has enough energy to move with the specified distanceFactor
 % takes into account energy regeneration
 canMove(AgentSettings, agent(_, _, _, Energy, _, _, _), DistanceFactor) :-
-    AgentSettings = agentSettings(_ , runSettings(RunMaxDistance, _), _, _),
+    AgentSettings = agentSettings(_ , runSettings(RunMaxDistance, _), _, _, _),
     EffectiveRunDistance is RunMaxDistance * DistanceFactor,
     movementEnergyCost(AgentSettings, EffectiveRunDistance, EnergyCost),
     Energy >= EnergyCost.
@@ -104,7 +106,7 @@ moveTowards(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosi
 % move the agent directly onto TargetPosition
 % and subtract energy to the distance traveled accordingly
 moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPosition, EnergyCost) :-
-    AgentSettings = agentSettings(_ , runSettings(RunMaxDistance, _), _, _),
+    AgentSettings = agentSettings(_ , runSettings(RunMaxDistance, _), _, _, _),
     EffectiveRunMaxDistance is DistanceFactor * RunMaxDistance,
     distance(Position, TargetPosition, Distance),
     Distance =< EffectiveRunMaxDistance,
@@ -115,7 +117,7 @@ moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPositio
 % move the agent a distance of EffectiveRunMaxDistance in the direction of TargetPosition
 % and subtract energy to the distance traveled accordingly
 moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPosition, EnergyCost) :-
-    AgentSettings = agentSettings(_ , runSettings(RunMaxDistance, _), _, _),
+    AgentSettings = agentSettings(_ , runSettings(RunMaxDistance, _), _, _, _),
     EffectiveRunDistance is DistanceFactor * RunMaxDistance,
     distance(Position, TargetPosition, Distance),
     Distance > EffectiveRunDistance,
@@ -131,20 +133,20 @@ rest(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, C
     regenerateEnergy(AgentSettings, Energy, NextEnergy_1),
     regenerateEnergy(AgentSettings, NextEnergy_1, NextEnergy).
 
-regenerateEnergy(agentSettings(_, _, energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(_, _, _, EnergyRegenerationDeviation)), Energy, NextEnergy) :-
+regenerateEnergy(agentSettings(_, _, energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(_, _, _, EnergyRegenerationDeviation), _), Energy, NextEnergy) :-
     deviate(EnergyRegenerationDeviation, EnergyRegenerationPerTick, EnergyRegenerated),
     NextEnergy_1 is Energy + EnergyRegenerated,
-    clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _), NextEnergy_1, NextEnergy).
+    clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _, _), NextEnergy_1, NextEnergy).
 
 % sets the agent position to initial position
 % and also set the agent energy to MaxEnergy
-resetAgent(agentSettings(_, _, energySettings(MaxEnergy, _), _), agent(Name, Role, _, _, Team, InitialPosition, Controller), agent(Name, Role, NextPosition, NextEnergy, Team, InitialPosition, Controller)) :-
+resetAgent(agentSettings(_, _, energySettings(MaxEnergy, _), _, _), agent(Name, Role, _, _, Team, InitialPosition, Controller), agent(Name, Role, NextPosition, NextEnergy, Team, InitialPosition, Controller)) :-
     NextPosition = InitialPosition,
     NextEnergy = MaxEnergy.
 
 % ensures the energy isn't above MaxEnergy
 % by clamping it
-clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _), Energy, NextEnergy) :-
+clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _, _), Energy, NextEnergy) :-
     Energy > MaxEnergy ->
         NextEnergy = MaxEnergy
         ;
@@ -157,17 +159,17 @@ clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _), Energy, NextEn
 % EnergyCost = 1 when distance = 1
 % EnergyCost = 2 when distance = 1.5
 % EnergyCost = 4 when distance = 1.5 * 1.5
-movementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _), Distance, EnergyCost) :-
+movementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _, _), Distance, EnergyCost) :-
     Distance > 0 ->
     EnergyCost is RunBaseEnergy * (5.52626008648 ** log(Distance))
     ;
     EnergyCost = 0.
 
 % lineraly interpolates between 0 and KickMaxEnergy using KickStrengthFactor
-kickEnergyCost(agentSettings(kickSettings(_, _, KickMaxEnergy), _, _, _), KickStrengthFactor, EnergyCost) :-
+kickEnergyCost(agentSettings(kickSettings(_, _, KickMaxEnergy), _, _, _, _), KickStrengthFactor, EnergyCost) :-
     EnergyCost is KickMaxEnergy * KickStrengthFactor.
 
-deviateKickAngle(agentSettings(_, _, _, deviationSettings(KickAngleDeviation, _, _, _)), DirectionVector, NextDirectionVector) :-
+deviateKickAngle(agentSettings(_, _, _, deviationSettings(KickAngleDeviation, _, _, _), _), DirectionVector, NextDirectionVector) :-
     toPolar(DirectionVector, polar(_, Theta)),
     FloatKickAngleDeviation is float(KickAngleDeviation),
     NegativeKickAngleDeviation is FloatKickAngleDeviation * -1.0,
@@ -175,10 +177,10 @@ deviateKickAngle(agentSettings(_, _, _, deviationSettings(KickAngleDeviation, _,
     NextTheta is Theta + (Deviation * pi/180),
     toVector(polar(1, NextTheta), NextDirectionVector).
 
-deviateKickStrength(agentSettings(_, _, _, deviationSettings(_, KickStrengthDeviation, _, _)), KickStrength, NextKickStrength) :-
+deviateKickStrength(agentSettings(_, _, _, deviationSettings(_, KickStrengthDeviation, _, _), _), KickStrength, NextKickStrength) :-
     deviate(KickStrengthDeviation, KickStrength, NextKickStrength).
 
-deviateRunDistance(agentSettings(_, _, _, deviationSettings(_, _, RunDistanceDeviation, _)), RunDistance, NextRunDistance) :-
+deviateRunDistance(agentSettings(_, _, _, deviationSettings(_, _, RunDistanceDeviation, _), _), RunDistance, NextRunDistance) :-
     deviate(RunDistanceDeviation, RunDistance, NextRunDistance).
 
 deviate(MaxDeviation, Value, DeviatedValue) :-
@@ -186,3 +188,29 @@ deviate(MaxDeviation, Value, DeviatedValue) :-
     UpperBound is 1.0 + MaxDeviation,
     random(LowerBound, UpperBound, DeviationFactor),
     DeviatedValue is Value * DeviationFactor.
+
+
+
+isColliding(agentSettings(_, _, _, _, AgentRadius), agent(_, _, Position, _, _, _, _), agent(_, _, OtherPosition, _, _, _, _)) :-
+    distance(Position, OtherPosition, Distance),
+    MinimumDistance is 2 * AgentRadius,
+    Distance =< MinimumDistance.
+
+resolveCollision(agentSettings(_, _, _, _, AgentRadius),
+    agent(Name, Role, Position, Energy, Team, InitialPosition, Controller),
+    agent(OtherName, OtherRole, OtherPosition, OtherEnergy, OtherTeam, OtherInitialPosition, OtherController),
+    agent(Name, Role, NextPosition, Energy, Team, InitialPosition, Controller),
+    agent(OtherName, OtherRole, NextOtherPosition, OtherEnergy, OtherTeam, OtherInitialPosition, OtherController)
+) :-
+    sub(OtherPosition, Position, DifferenceVector),
+    magnitude(DifferenceVector, Distance),
+    Distance > 0 ->
+    SeperationDistance is AgentRadius - (Distance / 2),
+    normalize(DifferenceVector, DirectionVector),
+    scale(DirectionVector, SeperationDistance, OffsetVector),
+    sub(Position, OffsetVector, NextPosition),
+    add(OtherPosition, OffsetVector, NextOtherPosition)
+    ;
+    NextPosition = Position,
+    NextOtherPosition = OtherPosition.
+    

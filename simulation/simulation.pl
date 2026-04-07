@@ -60,7 +60,7 @@ runSimulation(InitialState, [NextGameState | GameStates]) :-
     NextState = state(_, _, NextGameState),
     runSimulation(NextState, GameStates).
 
-exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunBaseEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation)), GameStates) :-
+exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunBaseEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation), AgentRadius), GameStates) :-
     gameStatesToJson(GameStates, GameStateJsons),
     GameJson = json{
         fieldSettings: json{
@@ -92,7 +92,8 @@ exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWal
                 kickStrengthDeviation: KickStrengthDeviation,
                 runDistanceDeviation: RunDistanceDeviation,
                 energyRegenerationDeviation: EnergyRegenerationDeviation
-           }
+           },
+           agentRadius: AgentRadius
         },
         gameStates: GameStateJsons
     },
@@ -150,6 +151,7 @@ agentsToJson([agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team)
 % ball bounces from any walls
 % ball velocity is dampened
 % agents take actions
+% agent collisions with walls/other agents are resolved
 step(state(FieldSettings, AgentSettings, gameState(Ball, Agents, Round, Score)), state(FieldSettings, AgentSettings, gameState(NextBall, NextAgents, NextRound, NextScore))) :-
     % update ball and check goal
     updateBallPosition(Ball, NextBall_1),
@@ -164,7 +166,8 @@ step(state(FieldSettings, AgentSettings, gameState(Ball, Agents, Round, Score)),
         updateBallPosition(Ball, NextBall_1),
         updateBallWallBounce(FieldSettings, NextBall_1, NextBall_2),
         dampenBall(FieldSettings, NextBall_2, NextBall_3),
-        updateAgents(FieldSettings, AgentSettings, Agents, NextBall_3, NextAgents, NextBall).
+        updateAgents(FieldSettings, AgentSettings, Agents, NextBall_3, NextAgents_1, NextBall),
+        updateAgentCollisions(FieldSettings, AgentSettings, NextAgents_1, NextAgents).
 
 % returns all agents to initial poition (defined within the agent itself)
 % and returns the ball to the center with 0 velocity
@@ -266,6 +269,34 @@ updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, N
     mirrorAction(FieldSettings, Action, MirroredAction),
     takeAction(MirroredAction, AgentSettings, Agent, Ball, NextAgent, NextBall).
 
+updateAgentCollisions(_, _, [], []).
+updateAgentCollisions(FieldSettings, AgentSettings, [Agent | OtherUnresolvedAgents], [NextAgent | Agents]) :-
+    resolveAgentWallCollision(FieldSettings, Agent, NextAgent_1),
+    resolveAgentCollision(AgentSettings, NextAgent_1, OtherUnresolvedAgents, NextAgent, NextOtherAgents),
+    updateAgentCollisions(FieldSettings, AgentSettings, NextOtherAgents, Agents).
+
+resolveAgentCollision(_, Agent, [], Agent, []).
+resolveAgentCollision(AgentSettings, Agent, [OtherAgent | T], NextAgent, [NextOtherAgent | NextOtherAgents]) :-
+    isColliding(AgentSettings, Agent, OtherAgent) ->
+    resolveCollision(AgentSettings, Agent, OtherAgent, NextAgent_1, NextOtherAgent),
+    resolveAgentCollision(AgentSettings, NextAgent_1, T, NextAgent, NextOtherAgents)
+    ;
+    NextOtherAgent = OtherAgent,
+    resolveAgentCollision(AgentSettings, Agent, T, NextAgent, NextOtherAgents).
+
+
+resolveAgentWallCollision(fieldSettings(vector(Width, Height), _, _, _, _), agent(Name, Role, vector(PositionX, PositionY), Energy, Team, InitialPosition, Controller), agent(Name, Role, vector(NextPositionX, NextPositionY), Energy, Team, InitialPosition, Controller)) :-
+    resolveAgentWallCollision(Width, PositionX, NextPositionX),
+    resolveAgentWallCollision(Height, PositionY, NextPositionY).
+
+resolveAgentWallCollision(WallPosition, Position, NextPosition) :-
+    Position < 0 ->
+    NextPosition = 0
+    ;
+    Position > WallPosition ->
+    NextPosition = WallPosition
+    ;
+    NextPosition = Position.
 
 % handle the move command
 % if agent doesn't have enough energy to do so defaults to the rest command
