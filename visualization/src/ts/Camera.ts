@@ -145,18 +145,19 @@ export default class Camera {
         context.beginPath();
         for(const agent of agents.filter(agent => agent.team == 0)){
             const position = this.project(agent.position);
+            context.moveTo(position.x, position.y);
             context.arc(position.x, position.y, agentRadius * this.zoom, 0, 2 * Math.PI);
         }
         context.closePath();
         context.fill();
     
         
-        //draw team 0
+        //draw team 1
         context.fillStyle = this.team1Color;
         context.beginPath();
         for(const agent of agents.filter(agent => agent.team == 1)){
             const position = this.project(agent.position);
-
+            context.moveTo(position.x, position.y);
             context.arc(position.x, position.y, agentRadius * this.zoom, 0, 2 * Math.PI);
         }
         context.closePath();
