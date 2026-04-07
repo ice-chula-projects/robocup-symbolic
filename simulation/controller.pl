@@ -40,11 +40,19 @@ control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), Agent
         Action = action(kick, vector(Width, GoalHeight), 1)
     ;
     % Move to the position between your goal and the nearest agent
+    Ball = ball(BallPosition, _),
+    Agent = agent(_, _, CurrentPosition, _, _, _, _),
+    distance(BallPosition, CurrentPosition, DistanceToBall),
+    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
+    MoveToBallReach is KickReach * 5,
+    (DistanceToBall < MoveToBallReach ->
+        Action = action(move, BallPosition, 1)
+    ;
     nearestAgent(Agent, OtherAgents, NearestAgent, _Distance),
     NearestAgent = agent(_, _, NearestAgentPosition, _, _, _, _),
     GoalHeight is Height/2,
     middle(NearestAgentPosition, vector(0, GoalHeight), Middle),
-    Action = action(move, Middle, 1).
+    Action = action(move, Middle, 1)).
 
 mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
     NextPositionX is Width - PositionX.
