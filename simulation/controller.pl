@@ -33,12 +33,17 @@ control(controller(simple), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
         Ball = ball(BallPosition, _),
         Action = action(move, BallPosition, 1).
 
-control(controller(defender), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, _, Ball, Action) :-
+control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, agent(_, _, CurrenrPosition, _, _, _, _), OtherAgents, Ball, Action) :-
+    % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
         GoalHeight is Height/2,
-        Action = action(kick, vector(Width,GoalHeight), 1);
-        Ball = ball(BallPosition, _),
-        Action = action(move, BallPosition, 1).
+        Action = action(kick, vector(Width,GoalHeight), 1)
+    ;
+    nearestAgent(Agent, OtherAgents, NearestAgent, Distance),
+    NearestAgent = agent(_, _, NearestAgentPosition, _, _, _, _),
+    write(NearestAgentPosition),
+    middle(NearestAgentPosition, CurrentPosition, Middle),
+    Action = action(move, Middle, 1).
 
 mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
     NextPositionX is Width - PositionX.
@@ -58,3 +63,23 @@ mirrorAgents(_, [], []).
 mirrorAgents(FieldSettings, [Agent | T], [MirroredAgent | Agents]) :-
     mirrorAgent(FieldSettings, Agent, MirroredAgent),
     mirrorAgents(FieldSettings, T, Agents).
+
+
+agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
+    distance(FirstPosition, SecondPosition, Distance).
+
+nearestAgent(_, [], _, inf).
+
+nearestAgent(Agent, [PoppedAgent | OtherAgents], NearestAgent, Distance) :-
+    nearestAgent(Agent, OtherAgents, PreviousNearestAgent, PreviousNearestDistance),
+    distance(Agent, PoppedAgent, CurrentDistance),
+    PreviousNearestDistance < CurrentDistance,
+    NearestAgent = PreviousNearestAgent,
+    Distance = PreviousNearestDistance.
+
+nearestAgent(Agent, [PoppedAgent | OtherAgents], NearestAgent, Distance) :-
+    nearestAgent(Agent, OtherAgents, _PreviousNearestAgent, PreviousNearestDistance),
+    distance(Agent, PoppedAgent, CurrentDistance),
+    PreviousNearestDistance >= CurrentDistance,
+    NearestAgent = PoppedAgent,
+    Distance = CurrentDistance.
