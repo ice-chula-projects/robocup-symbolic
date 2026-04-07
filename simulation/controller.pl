@@ -43,7 +43,7 @@ control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), Agent
     nearestAgent(Agent, OtherAgents, NearestAgent, _Distance),
     NearestAgent = agent(_, _, NearestAgentPosition, _, _, _, _),
     GoalHeight is Height/2,
-    middle(NearestAgentPosition, vector(Width, GoalHeight), Middle),
+    middle(NearestAgentPosition, vector(0, GoalHeight), Middle),
     Action = action(move, Middle, 1).
 
 mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
