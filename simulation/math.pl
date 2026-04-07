@@ -61,3 +61,8 @@ normalize(V, Vn) :-
     magnitude(V, D),
     InvD is 1/D,
     scale(V, InvD, Vn).
+
+% Find the position at the middle of 2 vectors
+middle(V1, V2, Middle) :-
+    add(V1, V2, Added),
+    scale(Added, 0.5, Middle).
