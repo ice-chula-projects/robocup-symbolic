@@ -271,7 +271,7 @@ updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, N
     mirrorAgent(FieldSettings, Agent, MirroredAgent),
     mirrorAgents(FieldSettings, OtherAgents, MirroredOtherAgents),
     mirrorBall(FieldSettings, Ball, MirroredBall),
-    control(Controller, FieldSettings, AgentSettings, MirroredAgent, OtherAgents, MirroredBall, Action),
+    control(Controller, FieldSettings, AgentSettings, MirroredAgent, MirroredOtherAgents, MirroredBall, Action),
     mirrorAction(FieldSettings, Action, MirroredAction),
     takeAction(MirroredAction, AgentSettings, Agent, Ball, NextAgent, NextBall), !.
 
