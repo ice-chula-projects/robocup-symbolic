@@ -1,4 +1,4 @@
-:- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2, polar/2, toVector/2, toPolar/2]).
+:- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2, polar/2, toVector/2, toPolar/2, middle/3]).
 
 vector(X, Y) :-
     number(X),
@@ -61,3 +61,8 @@ normalize(V, Vn) :-
     magnitude(V, D),
     InvD is 1/D,
     scale(V, InvD, Vn).
+
+% Find the position at the middle of 2 vectors
+middle(V1, V2, Middle) :-
+    add(V1, V2, Added),
+    scale(Added, 0.5, Middle).
