@@ -74,7 +74,5 @@ agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition
     distance(FirstPosition, SecondPosition, Distance).
 
 nearestAgent(Agent, OtherAgents, NearestAgent, Distance) :-
-    format("Agent: ~w~n", [Agent]),
-    format("OtherAgents: ~w~n", [OtherAgents]),
     findall(D-A, (member(A, OtherAgents), agentDistance(Agent, A, D)), Pairs),
     min_member(Distance-NearestAgent, Pairs).
