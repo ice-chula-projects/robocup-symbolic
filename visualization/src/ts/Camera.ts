@@ -136,16 +136,16 @@ export default class Camera {
         const context = this.canvas.getContext("2d");
         const agents = gameState.agents;
 
+        let agentRadius = this.playback.currentGameLog.agentSettings.agentRadius;
+            
+        //backwards compatability
+        if(agentRadius == null) agentRadius = 10;
         //draw team 0
         context.fillStyle = this.team0Color;
         context.beginPath();
         for(const agent of agents.filter(agent => agent.team == 0)){
             const position = this.project(agent.position);
-            let radius = this.playback.currentGameLog.agentSettings.agentRadius;
-            
-            //backwards compatability
-            if(radius == null) radius = 10;
-            context.arc(position.x, position.y, radius * this.zoom, 0, 2 * Math.PI);
+            context.arc(position.x, position.y, agentRadius * this.zoom, 0, 2 * Math.PI);
         }
         context.closePath();
         context.fill();
@@ -156,9 +156,8 @@ export default class Camera {
         context.beginPath();
         for(const agent of agents.filter(agent => agent.team == 1)){
             const position = this.project(agent.position);
-            const radius = this.playerRadius * this.zoom;
 
-            context.arc(position.x, position.y, radius, 0, 2 * Math.PI);
+            context.arc(position.x, position.y, agentRadius * this.zoom, 0, 2 * Math.PI);
         }
         context.closePath();
         context.fill();
