@@ -33,27 +33,113 @@ control(controller(simple), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
         Ball = ball(BallPosition, _),
         Action = action(move, BallPosition, 1).
 
+control(controller(passer), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
+        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
+        Action = action(kick, AllyPosition, 1)
+    ;
+    Ball = ball(BallPosition, _),
+    Action = action(move, BallPosition, 1).
+
 control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
-        GoalHeight is Height/2,
         nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
-        Action = action(kick, NearestAlly, 1)
+        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
+        Action = action(kick, AllyPosition, 1)
     ;
     % Move to the position between your goal and the nearest agent
     Ball = ball(BallPosition, _),
     Agent = agent(_, _, CurrentPosition, _, _, _, _),
     distance(BallPosition, CurrentPosition, DistanceToBall),
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
-    MoveToBallReach is KickReach * 5,
+    MoveToBallReach is KickReach * 10,
     (DistanceToBall < MoveToBallReach ->
         Action = action(move, BallPosition, 1)
     ;
-    nearestOpponent(Agent, OtherAgents, NearestOpponent, _Distance),
-    NearestOpponent = agent(_, _, NearestAgentPosition, _, _, _, _),
+    Ball = ball(BallPosition, _),
     GoalHeight is Height/2,
-    middle(NearestAgentPosition, vector(0, GoalHeight), Middle),
+    middle(BallPosition, vector(0, GoalHeight), Middle),
     Action = action(move, Middle, 1)).
+
+control(controller(topwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, _, Ball, Action) :-
+    % If can kick, kick towards the goal
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        GoalHeight is Height/2,
+        Action = action(kick, vector(Width,GoalHeight), 1)
+    ;
+    % Move to the position between your goal and the nearest agent
+    Ball = ball(BallPosition, _),
+    Agent = agent(_, _, CurrentPosition, _, _, _, _),
+    distance(BallPosition, CurrentPosition, DistanceToBall),
+    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
+    MoveToBallReach is KickReach * 15,
+    (DistanceToBall < MoveToBallReach ->
+        Action = action(move, BallPosition, 1)
+    ;
+    Ball = ball(BallPosition, _),
+    ThreeQuartersWidth is Width * 3 / 4,
+    middle(BallPosition, vector(ThreeQuartersWidth, 0), Middle),
+    Action = action(move, Middle, 1)).
+
+control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, _, Ball, Action) :-
+    % If can kick, kick towards the goal
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        GoalHeight is Height/2,
+        Action = action(kick, vector(Width,GoalHeight), 1)
+    ;
+    % Move to the position between your goal and the nearest agent
+    Ball = ball(BallPosition, _),
+    Agent = agent(_, _, CurrentPosition, _, _, _, _),
+    distance(BallPosition, CurrentPosition, DistanceToBall),
+    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
+    MoveToBallReach is KickReach * 15,
+    (DistanceToBall < MoveToBallReach ->
+        Action = action(move, BallPosition, 1)
+    ;
+    Ball = ball(BallPosition, _),
+    ThreeQuartersWidth is Width * 3 / 4,
+    middle(BallPosition, vector(ThreeQuartersWidth, Height), Middle),
+    Action = action(move, Middle, 1)).
+
+control(controller(midfield), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+    % If can kick, kick towards the goal
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
+        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
+        Action = action(kick, AllyPosition, 1)
+    ;
+    % Move to the position between your goal and the nearest agent
+    Ball = ball(BallPosition, _),
+    Agent = agent(_, _, CurrentPosition, _, _, _, _),
+    distance(BallPosition, CurrentPosition, DistanceToBall),
+    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
+    MoveToBallReach is KickReach * 20,
+    (DistanceToBall < MoveToBallReach ->
+        Action = action(move, BallPosition, 0.5)
+    ;
+    Ball = ball(BallPosition, _),
+    ThreeQuartersWidth is Width * 3 / 4,
+    GoalHeight is Height / 2,
+    middle(BallPosition, vector(ThreeQuartersWidth, GoalHeight), Middle),
+    Action = action(move, Middle, 1)).
+
+control(controller(goalkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+    % If can kick, kick towards the goal
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
+        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
+        Action = action(kick, AllyPosition, 1)
+    ;
+    % It can only move up and down based on goal size
+    Ball = ball(BallPosition, _),
+    BallPosition = vector(_, BallPositionY),
+    GoalSizeScaled is GoalSize * Height / 2,
+    MinPositionY is (Height / 2) - GoalSizeScaled,
+    MaxPositionY is (Height / 2) + GoalSizeScaled,
+    clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
+    Action = action(move, vector(0, ClampedPositionY), 1).
 
 mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
     NextPositionX is Width - PositionX.
@@ -87,11 +173,18 @@ nearestAgent(Agent, OtherAgents, NearestAgent, Distance) :-
     min_member(Distance-NearestAgent, Pairs).
 
 nearestAlly(Agent, OtherAgents, NearestAgent, Distance) :-
-    include(agentInTeam(0), OtherAgents, Allies),
+    exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
+    include(agentInTeam(0), NonGoalKeepers, Allies),
     nearestAgent(Agent, Allies, NearestAgent, Distance).
 
 nearestOpponent(Agent, OtherAgents, NearestAgent, Distance) :-
-    include(agentInTeam(1), OtherAgents, Opponents),
+    exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
+    include(agentInTeam(1), NonGoalKeepers, Opponents),
     nearestAgent(Agent, Opponents, NearestAgent, Distance).
 
 agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
+isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
+
+clamp(X, Min, _, Min) :- X < Min, !.
+clamp(X, _, Max, Max) :- X > Max, !.
+clamp(X, _, _, X).
