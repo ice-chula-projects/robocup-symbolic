@@ -58,10 +58,14 @@ control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), Agent
     (DistanceToBall < MoveToBallReach ->
         Action = action(move, BallPosition, 1)
     ;
-    Ball = ball(BallPosition, _),
-    GoalHeight is Height/2,
-    middle(BallPosition, vector(0, GoalHeight), Middle),
-    Action = action(move, Middle, 1)).
+    predictBallPosition(Agent, Ball, PredictedBallPosition),
+    distance(CurrentPosition, PredictedBallPosition, DistanceToPredictedPosition),
+    chooseDestination(Agent, Ball, PredictedBallPosition, Destination),
+    DistanceToPredictedPosition > KickReach ->
+        Action = action(move, Destination, 1))
+    ;
+    Action = action(rest).
+
 
 control(controller(topwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, _, Ball, Action) :-
     % If can kick, kick towards the goal
@@ -76,7 +80,8 @@ control(controller(topwing), fieldSettings(vector(Width, Height),_,_,_,_), Agent
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     MoveToBallReach is KickReach * 15,
     (DistanceToBall < MoveToBallReach ->
-        Action = action(move, BallPosition, 1)
+        predictBallAdd(Ball, PredictedPosition),
+        Action = action(move, PredictedPosition, 1)
     ;
     Ball = ball(BallPosition, _),
     ThreeQuartersWidth is Width * 3 / 4,
@@ -96,7 +101,8 @@ control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), Ag
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     MoveToBallReach is KickReach * 15,
     (DistanceToBall < MoveToBallReach ->
-        Action = action(move, BallPosition, 1)
+        predictBallAdd(Ball, PredictedPosition),
+        Action = action(move, PredictedPosition, 1)
     ;
     Ball = ball(BallPosition, _),
     ThreeQuartersWidth is Width * 3 / 4,
@@ -117,7 +123,8 @@ control(controller(midfield), fieldSettings(vector(Width, Height),_,_,_,_), Agen
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     MoveToBallReach is KickReach * 20,
     (DistanceToBall < MoveToBallReach ->
-        Action = action(move, BallPosition, 0.5)
+        predictBallAdd(Ball, PredictedPosition),
+        Action = action(move, PredictedPosition, 1)
     ;
     Ball = ball(BallPosition, _),
     ThreeQuartersWidth is Width * 3 / 4,
@@ -141,9 +148,27 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
     Action = action(move, vector(0, ClampedPositionY), 1).
 
+control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+    % If can kick, kick towards the goal
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        AdjustedHeight is 1.5 * Height,
+        NegativeHeight is -0.5 * Height,
+        random(NegativeHeight, AdjustedHeight, RandomPositionY),
+        Action = action(kick, vector(Width, RandomPositionY), 1)
+    ;
+    % It can only move up and down based on goal size
+    predictBallAdd(Ball, PredictedPosition),
+    PredictedPosition = vector(_, BallPositionY),
+    GoalSizeScaled is GoalSize * Height / 2,
+    MinPositionY is (Height / 2) - GoalSizeScaled,
+    MaxPositionY is (Height / 2) + GoalSizeScaled,
+    clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
+    Action = action(move, vector(0, ClampedPositionY), 1).
+
 mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
     NextPositionX is Width - PositionX.
 
+mirrorAction(_, action(rest), action(rest)).
 mirrorAction(FieldSettings, action(Name, Position, Factor), action(Name, MirroredPosition, Factor)) :-
     mirrorPosition(FieldSettings, Position, MirroredPosition).
 
@@ -188,3 +213,69 @@ isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
 clamp(X, Min, _, Min) :- X < Min, !.
 clamp(X, _, Max, Max) :- X > Max, !.
 clamp(X, _, _, X).
+
+% Uses a perpendicular line intersecting the ball's trajectory and the agent's position
+predictBallPosition(
+    agent(_, _, vector(AgentPositionX, AgentPositionY), _, _, _, _),
+    ball(vector(BallPositionX, BallPositionY), vector(BallVelocityX, BallVelocityY)),
+    /* returns */ PredictedBallPosition
+) :- (
+    BallVelocityX =:= 0 -> (
+        PredictedBallPosition = vector(AgentPositionX, AgentPositionY)
+    );
+    BallVelocityY =:= 0 -> (
+        PredictedBallPosition = vector(AgentPositionX, AgentPositionY)
+    );
+    (BallVelocityY / BallVelocityX)**2 + 1 =:= 0 -> (
+        PredictedBallPosition = vector(AgentPositionX, AgentPositionY)
+    );
+
+    % Ball movement linear equation:
+    % BallPositionY = M * BallPositionX + C
+    M is BallVelocityY / BallVelocityX,
+    C is BallPositionY - (M * (BallPositionX)),
+
+    % Line perpendicular to slope intersecting the Agent:
+    % Y = -(1/M) * X + (AgentPositionY + (1/M) * AgentPositionX)
+    PerpendicularConstant = (AgentPositionY + (AgentPositionX / M)),
+    X is M * (PerpendicularConstant - C) / ((M*M) + 1),
+    Y is M * X + C,
+    PredictedBallPosition = vector(X, Y)
+).
+
+% Decides between traveling to the computed destination or the home position depending on the direction of the movement.
+chooseDestination(
+    agent(_, _, AgentPosition, _, team(Team), HomePosition, _), 
+    ball(BallPosition, BallVelocity),
+    ComputedDestination,
+    /* returns */ Destination
+) :- (
+    magnitude(BallVelocity, BallVelocityMagnitude),
+    BallVelocityMagnitude =:= 0 -> (
+        Destination = HomePosition
+    );
+    sub(AgentPosition, BallPosition, RelativePositionFromBall),
+    magnitude(RelativePositionFromBall, RelativePositionMagnitude),
+    writeln(RelativePositionFromBall),
+    RelativePositionMagnitude =:= 0 -> (
+        Destination = HomePosition
+    );
+    sub(AgentPosition, BallPosition, RelativePositionFromBall),
+    normalize(RelativePositionFromBall, NormalizedRelativePosition),
+    normalize(BallVelocity, NormalizedBallDirection),
+    dot(NormalizedRelativePosition, NormalizedBallDirection, CosineTheta),
+    writeln(BallPosition),
+    writeln(BallVelocity),
+    CosineTheta < 0 -> (
+        Destination = HomePosition,
+        write(Team),
+        writeln(" Moving home")
+    );
+    write(Team),
+    writeln(" Not going home"),
+    Destination = ComputedDestination
+).
+
+predictBallAdd(ball(BallPosition, BallVelocity), PredictedPosition) :-
+    scale(BallVelocity, 5, ScaledVelocity),
+    add(BallPosition, ScaledVelocity, PredictedPosition).
