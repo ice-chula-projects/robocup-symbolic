@@ -56,7 +56,8 @@ control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), Agent
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     MoveToBallReach is KickReach * 10,
     (DistanceToBall < MoveToBallReach ->
-        Action = action(move, BallPosition, 1)
+        predictBallAdd(Ball, PredictedPosition),
+        Action = action(move, PredictedPosition, 1)
     ;
     predictBallPosition(Agent, Ball, PredictedBallPosition),
     distance(CurrentPosition, PredictedBallPosition, DistanceToPredictedPosition),
@@ -260,7 +261,7 @@ chooseDestination(
     );
     sub(AgentPosition, BallPosition, RelativePositionFromBall),
     magnitude(RelativePositionFromBall, RelativePositionMagnitude),
-    writeln(RelativePositionFromBall),
+    %writeln(RelativePositionFromBall),
     RelativePositionMagnitude =:= 0 -> (
         Destination = HomePosition
     );
@@ -268,15 +269,15 @@ chooseDestination(
     normalize(RelativePositionFromBall, NormalizedRelativePosition),
     normalize(BallVelocity, NormalizedBallDirection),
     dot(NormalizedRelativePosition, NormalizedBallDirection, CosineTheta),
-    writeln(BallPosition),
-    writeln(BallVelocity),
+    %writeln(BallPosition),
+    %writeln(BallVelocity),
     CosineTheta < 0 -> (
-        Destination = HomePosition,
-        write(Team),
-        writeln(" Moving home")
+        Destination = HomePosition
+        %write(Team),
+        %writeln(" Moving home")
     );
-    write(Team),
-    writeln(" Not going home"),
+    %write(Team),
+    %writeln(" Not going home"),
     Destination = ComputedDestination
 ).
 
