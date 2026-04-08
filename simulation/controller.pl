@@ -165,16 +165,20 @@ control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
     Action = action(move, vector(0, ClampedPositionY), 1).
 
+mirror(AxisPosition, Position, MirroredPosition) :-
+    MirroredPosition is 2 * AxisPosition - Position.
+
 mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
-    NextPositionX is Width - PositionX.
+    MirrorPosition is Width / 2,
+    mirror(MirrorPosition, PositionX, NextPositionX).
 
 mirrorAction(_, action(rest), action(rest)).
 mirrorAction(FieldSettings, action(Name, Position, Factor), action(Name, MirroredPosition, Factor)) :-
     mirrorPosition(FieldSettings, Position, MirroredPosition).
 
-mirrorBall(FieldSettings, ball(Position, Velocity), ball(MirroredPosition, MirroredVelocity)) :-
+mirrorBall(FieldSettings, ball(Position, vector(VelocityX, VelocityY)), ball(MirroredPosition, vector(MirroredVelocityX, VelocityY))) :-
     mirrorPosition(FieldSettings, Position, MirroredPosition),
-    mirrorPosition(FieldSettings, Velocity, MirroredVelocity).
+    mirror(0, VelocityX, MirroredVelocityX).
 
 mirrorTeam(team(0), team(1)).
 mirrorTeam(team(1), team(0)).
