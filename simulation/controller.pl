@@ -33,21 +33,11 @@ control(controller(simple), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
         Ball = ball(BallPosition, _),
         Action = action(move, BallPosition, 1).
 
-control(controller(passer), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
-        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
-        Action = action(kick, AllyPosition, 1)
-    ;
-    Ball = ball(BallPosition, _),
-    Action = action(move, BallPosition, 1).
-
 control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % Will pass the ball to the nearest ally
     canKick(AgentSettings, Agent, Ball, 1) ->
-        nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
-        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
-        Action = action(kick, AllyPosition, 1)
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        Action = action(kick, BestPassTargetPosition, 1)
     ;
     % Move to the position between your goal and the nearest agent
     (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
@@ -101,9 +91,8 @@ control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), Ag
 control(controller(midfield), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
-        nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
-        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
-        Action = action(kick, AllyPosition, 1)
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        Action = action(kick, BestPassTargetPosition, 1)
     ;
     % Move to the position between your goal and the nearest agent
     (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
@@ -119,9 +108,8 @@ control(controller(midfield), fieldSettings(vector(Width, Height),_,_,_,_), Agen
 control(controller(goalkeeper), fieldSettings(vector(Width, Height),GoalSize,_,HomePosition,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
-        nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
-        NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
-        Action = action(kick, AllyPosition, 1)
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        Action = action(kick, BestPassTargetPosition, 1)
     ;
     % It can only move up and down based on goal size
     Ball = ball(BallPosition, _),
@@ -181,19 +169,17 @@ mirrorAgents(FieldSettings, [Agent | T], [MirroredAgent | MirroredAgents]) :-
 agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
     distance(FirstPosition, SecondPosition, Distance).
 
-nearestAgent(Agent, OtherAgents, NearestAgent, Distance) :-
-    findall(D-A, (member(A, OtherAgents), agentDistance(Agent, A, D)), Pairs),
-    min_member(Distance-NearestAgent, Pairs).
-
-nearestAlly(Agent, OtherAgents, NearestAgent, Distance) :-
+bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
+    Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
     exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
     include(agentInTeam(0), NonGoalKeepers, Allies),
-    nearestAgent(Agent, Allies, NearestAgent, Distance).
+    findall(Score-A, (
+        member(A, Allies), A = agent(_, _, vector(AX, _), _, _, _, _),
+        agentDistance(A, Agent, Distance),
+        Score is (AX - AgentPositionX) - Distance
+    ), Pairs),
 
-nearestOpponent(Agent, OtherAgents, NearestAgent, Distance) :-
-    exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
-    include(agentInTeam(1), NonGoalKeepers, Opponents),
-    nearestAgent(Agent, Opponents, NearestAgent, Distance).
+    max_member(_Score-BestPassTarget, Pairs).
 
 agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
 isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
@@ -208,13 +194,7 @@ predictBallPosition(
     ball(vector(BallPositionX, BallPositionY), vector(BallVelocityX, BallVelocityY)),
     /* returns */ PredictedBallPosition
 ) :- (
-    BallVelocityX =:= 0 -> (
-        PredictedBallPosition = vector(AgentPositionX, AgentPositionY)
-    );
-    BallVelocityY =:= 0 -> (
-        PredictedBallPosition = vector(AgentPositionX, AgentPositionY)
-    );
-    (BallVelocityY / BallVelocityX)**2 + 1 =:= 0 -> (
+    ((BallVelocityX =:= 0) ; (BallVelocityY =:= 0) ; ((BallVelocityY / BallVelocityX)**2 + 1 =:= 0)) -> (
         PredictedBallPosition = vector(AgentPositionX, AgentPositionY)
     );
 
@@ -250,7 +230,6 @@ chooseDestination(
     );
     sub(AgentPosition, BallPosition, RelativePositionFromBall),
     magnitude(RelativePositionFromBall, RelativePositionMagnitude),
-    %writeln(RelativePositionFromBall),
     RelativePositionMagnitude =:= 0 -> (
         Destination = HomePosition
     );
@@ -258,15 +237,10 @@ chooseDestination(
     normalize(RelativePositionFromBall, NormalizedRelativePosition),
     normalize(BallVelocity, NormalizedBallDirection),
     dot(NormalizedRelativePosition, NormalizedBallDirection, CosineTheta),
-    %writeln(BallPosition),
-    %writeln(BallVelocity),
-    CosineTheta < 0 -> (
+    
+    CosineTheta < 0 -> ( % cos(90°) = 0
         Destination = HomePosition
-        %write(Team),
-        %writeln(" Moving home")
     );
-    %write(Team),
-    %writeln(" Not going home"),
     Destination = ComputedDestination
 ).
 
