@@ -97,13 +97,15 @@ control(controller(midfield), fieldSettings(vector(Width, Height), _, _, _, _), 
     % Move to the position between your goal and the nearest agent
     (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
         predictBallAdd(Ball, PredictedBallPosition),
-        Action = action(move, PredictedBallPosition, 1)
+        dashingMovementFactor(AgentSettings, DashingMovementFactor),
+        Action = action(move, PredictedBallPosition, DashingMovementFactor)
     ;
     Ball = ball(BallPosition, _),
     ThreeFiftsWidth is Width * 3 / 5,
     GoalHeight is Height / 2,
     middle(BallPosition, vector(ThreeFiftsWidth, GoalHeight), Middle),
-    Action = action(move, Middle, 1)).
+    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
+    Action = action(move, Middle, SustainableMovementFactor)).
 
 control(controller(goalkeeper), fieldSettings(vector(_, Height), GoalSize, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
@@ -254,3 +256,8 @@ sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
     AgentSettings = agentSettings(_, runSettings(RunMaxDistance, _), energySettings(_, EnergyRegenerationPerTick), _, _),
     movementEnergyCost(AgentSettings, SustainableDistance, EnergyRegenerationPerTick),
     SustainableMovementFactor is SustainableDistance / RunMaxDistance.
+
+% Finds the movement factor that allows the agent to move using the same energy as it decays
+dashingMovementFactor(AgentSettings, DashingMovementFactor) :-
+    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
+    DashingMovementFactor is SustainableMovementFactor * 1.5.
