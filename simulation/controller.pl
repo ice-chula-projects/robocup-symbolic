@@ -43,68 +43,56 @@ control(controller(passer), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
     Action = action(move, BallPosition, 1).
 
 control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
-    % If can kick, kick towards the goal
+    % Will pass the ball to the nearest ally
     canKick(AgentSettings, Agent, Ball, 1) ->
         nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
         NearestAlly = agent(_, _, AllyPosition, _, _, _, _),
         Action = action(kick, AllyPosition, 1)
     ;
     % Move to the position between your goal and the nearest agent
-    Ball = ball(BallPosition, _),
-    Agent = agent(_, _, CurrentPosition, _, _, _, _),
-    distance(BallPosition, CurrentPosition, DistanceToBall),
-    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
-    MoveToBallReach is KickReach * 10,
-    (DistanceToBall < MoveToBallReach ->
+    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
         predictBallAdd(Ball, PredictedPosition),
         Action = action(move, PredictedPosition, 1)
     ;
+    Agent = agent(_, _, CurrentPosition, _, _, _, _),
+    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     predictBallPosition(Agent, Ball, PredictedBallPosition),
     distance(CurrentPosition, PredictedBallPosition, DistanceToPredictedPosition),
     chooseDestination(Agent, Ball, PredictedBallPosition, Destination),
     DistanceToPredictedPosition > KickReach ->
-        Action = action(move, Destination, 1))
+        Action = action(move, Destination, 1)
     ;
-    Action = action(rest).
+    Action = action(rest)
+).
 
-
-control(controller(topwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, _, Ball, Action) :-
-    % If can kick, kick towards the goal
+control(controller(topwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+    % Will kick towards the goal if given the chance
     canKick(AgentSettings, Agent, Ball, 1) ->
         GoalHeight is Height/2,
         Action = action(kick, vector(Width,GoalHeight), 1)
     ;
     % Move to the position between your goal and the nearest agent
-    Ball = ball(BallPosition, _),
-    Agent = agent(_, _, CurrentPosition, _, _, _, _),
-    distance(BallPosition, CurrentPosition, DistanceToBall),
-    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
-    MoveToBallReach is KickReach * 15,
-    (DistanceToBall < MoveToBallReach ->
-        predictBallAdd(Ball, PredictedPosition),
-        Action = action(move, PredictedPosition, 1)
+    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
+        predictBallAdd(Ball, PredictedBallPosition),
+        Action = action(move, PredictedBallPosition, 1)
     ;
     Ball = ball(BallPosition, _),
     ThreeQuartersWidth is Width * 3 / 4,
     middle(BallPosition, vector(ThreeQuartersWidth, 0), Middle),
     Action = action(move, Middle, 1)).
 
-control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, _, Ball, Action) :-
-    % If can kick, kick towards the goal
+control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+    % Will kick towards the goal if given the chance
     canKick(AgentSettings, Agent, Ball, 1) ->
         GoalHeight is Height/2,
-        Action = action(kick, vector(Width,GoalHeight), 1)
+        Action = action(kick, vector(Width, GoalHeight), 1)
     ;
-    % Move to the position between your goal and the nearest agent
-    Ball = ball(BallPosition, _),
-    Agent = agent(_, _, CurrentPosition, _, _, _, _),
-    distance(BallPosition, CurrentPosition, DistanceToBall),
-    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
-    MoveToBallReach is KickReach * 15,
-    (DistanceToBall < MoveToBallReach ->
-        predictBallAdd(Ball, PredictedPosition),
-        Action = action(move, PredictedPosition, 1)
+    % If you're closest to the ball, move to it
+    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
+        predictBallAdd(Ball, PredictedBallPosition),
+        Action = action(move, PredictedBallPosition, 1)
     ;
+    % If you're far from the ball, go to a front position relative to the ball.
     Ball = ball(BallPosition, _),
     ThreeQuartersWidth is Width * 3 / 4,
     middle(BallPosition, vector(ThreeQuartersWidth, Height), Middle),
@@ -118,22 +106,17 @@ control(controller(midfield), fieldSettings(vector(Width, Height),_,_,_,_), Agen
         Action = action(kick, AllyPosition, 1)
     ;
     % Move to the position between your goal and the nearest agent
-    Ball = ball(BallPosition, _),
-    Agent = agent(_, _, CurrentPosition, _, _, _, _),
-    distance(BallPosition, CurrentPosition, DistanceToBall),
-    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
-    MoveToBallReach is KickReach * 20,
-    (DistanceToBall < MoveToBallReach ->
-        predictBallAdd(Ball, PredictedPosition),
-        Action = action(move, PredictedPosition, 1)
+    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
+        predictBallAdd(Ball, PredictedBallPosition),
+        Action = action(move, PredictedBallPosition, 1)
     ;
     Ball = ball(BallPosition, _),
-    ThreeQuartersWidth is Width * 3 / 4,
+    ThreeFiftsWidth is Width * 3 / 5,
     GoalHeight is Height / 2,
-    middle(BallPosition, vector(ThreeQuartersWidth, GoalHeight), Middle),
+    middle(BallPosition, vector(ThreeFiftsWidth, GoalHeight), Middle),
     Action = action(move, Middle, 1)).
 
-control(controller(goalkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+control(controller(goalkeeper), fieldSettings(vector(Width, Height),GoalSize,_,HomePosition,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
         nearestAlly(Agent, OtherAgents, NearestAlly, _Distance),
@@ -247,6 +230,12 @@ predictBallPosition(
     Y is M * X + C,
     PredictedBallPosition = vector(X, Y)
 ).
+
+closestDistanceToBall(AllAgents, ball(BallPosition, _), ClosestAgent) :-
+    exclude(isGoalkeeper, AllAgents, NonGoalKeepers),
+    include(agentInTeam(0), NonGoalKeepers, Allies),
+    findall(D-A, (member(A, Allies), A = agent(_, _, AgentPosition, _, _, _, _), distance(BallPosition, AgentPosition, D)), Pairs),
+    min_member(_Distance-ClosestAgent, Pairs).
 
 % Decides between traveling to the computed destination or the home position depending on the direction of the movement.
 chooseDestination(
