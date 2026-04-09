@@ -33,7 +33,7 @@ control(controller(simple), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
         Ball = ball(BallPosition, _),
         Action = action(move, BallPosition, 1).
 
-control(controller(blocker), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+control(controller(blocker), _FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % Will pass the ball to the nearest ally
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
@@ -88,7 +88,7 @@ control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), Ag
     middle(BallPosition, vector(ThreeQuartersWidth, Height), Middle),
     Action = action(move, Middle, 1)).
 
-control(controller(midfield), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+control(controller(midfield), fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
@@ -105,7 +105,7 @@ control(controller(midfield), fieldSettings(vector(Width, Height),_,_,_,_), Agen
     middle(BallPosition, vector(ThreeFiftsWidth, GoalHeight), Middle),
     Action = action(move, Middle, 1)).
 
-control(controller(goalkeeper), fieldSettings(vector(Width, Height),GoalSize,_,HomePosition,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+control(controller(goalkeeper), fieldSettings(vector(_, Height), GoalSize, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
@@ -120,7 +120,7 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height),GoalSize,_,H
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
     Action = action(move, vector(0, ClampedPositionY), 1).
 
-control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
+control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, _OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
         AdjustedHeight is 1.5 * Height,
@@ -219,7 +219,7 @@ closestDistanceToBall(AllAgents, ball(BallPosition, _), ClosestAgent) :-
 
 % Decides between traveling to the computed destination or the home position depending on the direction of the movement.
 chooseDestination(
-    agent(_, _, AgentPosition, _, team(Team), HomePosition, _), 
+    agent(_, _, AgentPosition, _, _, HomePosition, _), 
     ball(BallPosition, BallVelocity),
     ComputedDestination,
     /* returns */ Destination
