@@ -1,6 +1,6 @@
 import KeyboardInput from "./KeyboardInput.js";
 import Vector2D from "./lib/Vector2D.js"
-import Playback, { GameStateProcessed } from "./Playback.js";
+import Playback, { Agent, AgentProcessed, GameStateProcessed } from "./Playback.js";
 
 export default class Camera {
     canvas: HTMLCanvasElement;
@@ -20,6 +20,11 @@ export default class Camera {
     team0Color: string = "blue";
     team1Color: string = "red";
     goalWidth: number = 25;
+
+    font: string = "arial";
+    fontSize: number = 12;
+    textMargin: number = 2;
+    textColor: string = "white";
     
     lastMouseData: {
         x: number | null
@@ -132,36 +137,35 @@ export default class Camera {
         context.fill();
     }
 
-    drawAgents(gameState: GameStateProcessed){
+    drawAgent(agent: AgentProcessed){
         const context = this.canvas.getContext("2d");
-        const agents = gameState.agents;
-
         let agentRadius = this.playback.currentGameLog.agentSettings.agentRadius;
-            
         //backwards compatability
         if(agentRadius == null) agentRadius = 10;
-        //draw team 0
-        context.fillStyle = this.team0Color;
+
+        context.fillStyle = agent.team == 0 ? this.team0Color : this.team1Color;
+        context.font = `${Math.round(this.fontSize * this.zoom)}px ${this.font}`;
+        context.textAlign = "center";
+
         context.beginPath();
-        for(const agent of agents.filter(agent => agent.team == 0)){
-            const position = this.project(agent.position);
-            context.moveTo(position.x, position.y);
-            context.arc(position.x, position.y, agentRadius * this.zoom, 0, 2 * Math.PI);
-        }
+        const position = this.project(agent.position);
+        context.moveTo(position.x, position.y);
+        context.arc(position.x, position.y, agentRadius * this.zoom, 0, 2 * Math.PI);
         context.closePath();
         context.fill();
-    
-        
-        //draw team 1
-        context.fillStyle = this.team1Color;
-        context.beginPath();
-        for(const agent of agents.filter(agent => agent.team == 1)){
-            const position = this.project(agent.position);
-            context.moveTo(position.x, position.y);
-            context.arc(position.x, position.y, agentRadius * this.zoom, 0, 2 * Math.PI);
+
+        //draw text
+        context.fillStyle = this.textColor;
+        context.fillText(`Role: ${agent.role}`, position.x, position.y - (agentRadius + this.textMargin) * this.zoom);
+        context.fillText(`Name: ${agent.name}`, position.x, position.y - (agentRadius + this.fontSize + this.textMargin) * this.zoom);
+    }
+
+    drawAgents(gameState: GameStateProcessed){
+        const context = this.canvas.getContext("2d");
+
+        for (const agent of gameState.agents){
+            this.drawAgent(agent);
         }
-        context.closePath();
-        context.fill();
     }
 
     handleInput(): void {

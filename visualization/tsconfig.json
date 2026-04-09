@@ -3,5 +3,7 @@
         "target": "ESNext",
         "lib": ["DOM", "ESNext"],
         "outDir": "./src/js/",
+        "rootDir": "./src/ts",
+        "strict": false
     }
 }
