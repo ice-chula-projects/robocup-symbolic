@@ -37,12 +37,13 @@ control(controller(blocker), _FieldSettings, AgentSettings, Agent, OtherAgents, 
     % Will pass the ball to the nearest ally
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 1)
+        Action = action(kick, BestPassTargetPosition, 0.65)
     ;
     % Move to the position between your goal and the nearest agent
     (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
-        predictBallAdd(Ball, PredictedPosition),
-        Action = action(move, PredictedPosition, 1)
+        predictBallAdd(Ball, PredictedBallPosition),
+        dashingMovementFactor(AgentSettings, DashingMovementFactor),
+        Action = action(move, PredictedBallPosition, DashingMovementFactor)
     ;
     Agent = agent(_, _, CurrentPosition, _, _, _, _),
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
@@ -50,7 +51,8 @@ control(controller(blocker), _FieldSettings, AgentSettings, Agent, OtherAgents, 
     distance(CurrentPosition, PredictedBallPosition, DistanceToPredictedPosition),
     chooseDestination(Agent, Ball, PredictedBallPosition, Destination),
     DistanceToPredictedPosition > KickReach ->
-        Action = action(move, Destination, 1)
+        sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
+        Action = action(move, Destination, SustainableMovementFactor)
     ;
     Action = action(rest)
 ).
@@ -64,12 +66,14 @@ control(controller(topwing), fieldSettings(vector(Width, Height),_,_,_,_), Agent
     % Move to the position between your goal and the nearest agent
     (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
         predictBallAdd(Ball, PredictedBallPosition),
-        Action = action(move, PredictedBallPosition, 1)
+        dashingMovementFactor(AgentSettings, DashingMovementFactor),
+        Action = action(move, PredictedBallPosition, DashingMovementFactor)
     ;
     Ball = ball(BallPosition, _),
     ThreeQuartersWidth is Width * 3 / 4,
     middle(BallPosition, vector(ThreeQuartersWidth, 0), Middle),
-    Action = action(move, Middle, 1)).
+    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
+    Action = action(move, Middle, SustainableMovementFactor)).
 
 control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % Will kick towards the goal if given the chance
@@ -80,19 +84,21 @@ control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), Ag
     % If you're closest to the ball, move to it
     (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
         predictBallAdd(Ball, PredictedBallPosition),
-        Action = action(move, PredictedBallPosition, 1)
+        dashingMovementFactor(AgentSettings, DashingMovementFactor),
+        Action = action(move, PredictedBallPosition, DashingMovementFactor)
     ;
     % If you're far from the ball, go to a front position relative to the ball.
     Ball = ball(BallPosition, _),
     ThreeQuartersWidth is Width * 3 / 4,
     middle(BallPosition, vector(ThreeQuartersWidth, Height), Middle),
-    Action = action(move, Middle, 1)).
+    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
+    Action = action(move, Middle, SustainableMovementFactor)).
 
 control(controller(midfield), fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 1)
+        Action = action(kick, BestPassTargetPosition, 0.5)
     ;
     % Move to the position between your goal and the nearest agent
     (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
@@ -109,7 +115,7 @@ control(controller(midfield), fieldSettings(vector(Width, Height), _, _, _, _), 
 
 control(controller(goalkeeper), fieldSettings(vector(_, Height), GoalSize, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
-    canKick(AgentSettings, Agent, Ball, 1) ->
+    canKick(AgentSettings, Agent, Ball, 0.65) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
         Action = action(kick, BestPassTargetPosition, 1)
     ;
@@ -120,7 +126,8 @@ control(controller(goalkeeper), fieldSettings(vector(_, Height), GoalSize, _, _,
     MinPositionY is (Height / 2) - GoalSizeScaled,
     MaxPositionY is (Height / 2) + GoalSizeScaled,
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
-    Action = action(move, vector(0, ClampedPositionY), 1).
+    dashingMovementFactor(AgentSettings, DashingMovementFactor),
+    Action = action(move, vector(0, ClampedPositionY), DashingMovementFactor).
 
 control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, _OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
