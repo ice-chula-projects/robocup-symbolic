@@ -244,6 +244,13 @@ chooseDestination(
     Destination = ComputedDestination
 ).
 
+% TODO: change name to naiveBallPositionPrediction
 predictBallAdd(ball(BallPosition, BallVelocity), PredictedPosition) :-
     scale(BallVelocity, 5, ScaledVelocity),
     add(BallPosition, ScaledVelocity, PredictedPosition).
+
+% Finds the movement factor that allows the agent to move using the same energy as it decays
+sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
+    AgentSettings = agentSettings(_, runSettings(RunMaxDistance, _), energySettings(_, EnergyRegenerationPerTick), _, _),
+    movementEnergyCost(AgentSettings, SustainableDistance, EnergyRegenerationPerTick),
+    SustainableMovementFactor is SustainableDistance / RunMaxDistance.
