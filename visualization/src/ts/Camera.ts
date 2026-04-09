@@ -21,11 +21,26 @@ export default class Camera {
     team1Color: string = "red";
     goalWidth: number = 25;
 
+    agentInformationMargin: number = 2;
+
     font: string = "arial";
     fontSize: number = 12;
-    textMargin: number = 2;
     textColor: string = "white";
-    
+
+    energyBarColor: string = "lime";
+    energyBarHeight: number = 8;
+    energyBarOutlineThickness: number = 1;
+    //the energy bar's width will be energyBarRelativeWidthFactor times the radius of the agent 
+    energyBarRelativeWidthFactor: number = 5;
+
+    rendering: {
+        energyBar: boolean,
+        agentNameAndRole: boolean
+    } = {
+        energyBar: true,
+        agentNameAndRole: true
+    }
+
     lastMouseData: {
         x: number | null
         y: number | null
@@ -155,10 +170,25 @@ export default class Camera {
         context.fill();
 
         //draw text
-        context.fillStyle = this.textColor;
-        context.fillText(`Role: ${agent.role}`, position.x, position.y - (agentRadius + this.textMargin) * this.zoom);
-        context.fillText(`Name: ${agent.name}`, position.x, position.y - (agentRadius + this.fontSize + this.textMargin) * this.zoom);
-    }
+        if(this.rendering.agentNameAndRole){
+            context.fillStyle = this.textColor;
+            context.fillText(`Role: ${agent.role}`, position.x, position.y - (agentRadius + this.agentInformationMargin) * this.zoom);
+            context.fillText(`Name: ${agent.name}`, position.x, position.y - (agentRadius + this.fontSize + this.agentInformationMargin) * this.zoom);
+        }
+
+        //draw energy bar
+        if(this.rendering.energyBar){
+            const energyBarFullWidth = this.energyBarRelativeWidthFactor * agentRadius * this.zoom;
+            const energyFraction = agent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
+            const energyBarWidth = energyBarFullWidth * energyFraction;
+
+            context.fillStyle = this.energyBarColor;
+            context.strokeStyle = "white";
+            context.lineWidth = this.energyBarOutlineThickness * this.zoom;
+            context.fillRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarWidth, this.energyBarHeight * this.zoom)
+            context.strokeRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarFullWidth, this.energyBarHeight * this.zoom);
+        }
+        }
 
     drawAgents(gameState: GameStateProcessed){
         const context = this.canvas.getContext("2d");
