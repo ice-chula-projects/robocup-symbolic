@@ -1,4 +1,4 @@
-:- module(agent, [agentSettings/5, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3, deviate/3, isColliding/3, resolveCollision/5]).
+:- module(agent, [agentSettings/5, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3, deviate/3, isColliding/3, resolveCollision/5, movementEnergyCost/3]).
 :- use_module(math).
 :- use_module(controller, [controller/1]).
 
@@ -160,10 +160,21 @@ clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _, _), Energy, Nex
 % EnergyCost = 2 when distance = 1.5
 % EnergyCost = 4 when distance = 1.5 * 1.5
 movementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _, _), Distance, EnergyCost) :-
+    %so that you can just pass in X or distance or energy cost and get the answer isntead of using 2 seperate functors
+    var(Distance), nonvar(EnergyCost) ->
+    inverseMovementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _, _), EnergyCost, Distance)
+    ;
     Distance > 0 ->
     EnergyCost is RunBaseEnergy * (5.52626008648 ** log(Distance))
     ;
     EnergyCost = 0.
+
+% calculates the distance traveled, given energySpent
+inverseMovementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _, _), EnergyCost, Distance) :-
+    EnergyCost > 0 ->
+    Distance is (1.79492367603 ** log(EnergyCost)) / RunBaseEnergy
+    ;
+    Distance = 0.
 
 % lineraly interpolates between 0 and KickMaxEnergy using KickStrengthFactor
 kickEnergyCost(agentSettings(kickSettings(_, _, KickMaxEnergy), _, _, _, _), KickStrengthFactor, EnergyCost) :-
