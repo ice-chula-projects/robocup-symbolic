@@ -387,7 +387,7 @@ mirrorTeam(team(0), team(1)).
 mirrorTeam(team(1), team(0)).
 
 mirrorRelativePosition(vector(RelativePositionX, RelativePositionY), vector(MirroredRelativePositionX, RelativePositionY)) :-
-    MirroredRelativePositionX is 1 - RelativePositionX.
+    mirror(0.5, RelativePositionX, MirroredRelativePositionX).
 
 mirrorAgent(FieldSettings, agent(Name, Role, Position, Energy, Team, RelativeInitialPosition, Controller), agent(Name, Role, MirroredPosition, Energy, MirroredTeam, MirroredRelativeInitialPosition, Controller)) :-
     mirrorPosition(FieldSettings, Position, MirroredPosition),
