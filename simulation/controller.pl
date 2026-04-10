@@ -218,9 +218,12 @@ mirrorBall(FieldSettings, ball(Position, vector(VelocityX, VelocityY)), ball(Mir
 mirrorTeam(team(0), team(1)).
 mirrorTeam(team(1), team(0)).
 
-mirrorAgent(FieldSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), agent(Name, Role, MirroredPosition, Energy, MirroredTeam, MirroredInitialPosition, Controller)) :-
+mirrorRelativePosition(vector(RelativePositionX, RelativePositionY), vector(MirroredRelativePositionX, RelativePositionY)) :-
+    MirroredRelativePositionX is 1 - RelativePositionX.
+
+mirrorAgent(FieldSettings, agent(Name, Role, Position, Energy, Team, RelativeInitialPosition, Controller), agent(Name, Role, MirroredPosition, Energy, MirroredTeam, MirroredRelativeInitialPosition, Controller)) :-
     mirrorPosition(FieldSettings, Position, MirroredPosition),
-    mirrorPosition(FieldSettings, InitialPosition, MirroredInitialPosition),
+    mirrorRelativePosition(RelativeInitialPosition, MirroredRelativeInitialPosition),
     mirrorTeam(Team, MirroredTeam).
 
 mirrorAgents(_, [], []).
