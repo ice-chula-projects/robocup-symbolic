@@ -13,6 +13,8 @@ export default class Camera {
     zoomSpeed: number = .1;
     zoomBounds: { min: number, max: number } = { min: 0.1, max: 10 };
 
+    backgroundColor: string = "darkgreen";
+
     ballRadius: number = 5;
     ballColor: string = "white";
     borderWidth: number = 3;
@@ -113,6 +115,10 @@ export default class Camera {
     drawField() {
         const context = this.canvas.getContext("2d");
 
+        //draw background
+        context.fillStyle = this.backgroundColor;
+        context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
         const topLeft = this.project(Vector2D.zero);
         const fieldDimensions = this.playback.currentGameLog.fieldSettings.dimensions;
 
@@ -120,7 +126,7 @@ export default class Camera {
         context.strokeStyle = this.borderColor;
         const borderWidth = this.borderWidth * this.zoom;
         context.lineWidth = borderWidth
-        
+
         //value to nudge the by so that the ball appears to bounce when it's edge hits instead of it's center
         const nudge = this.ballRadius * this.zoom;
         context.beginPath();
@@ -191,8 +197,6 @@ export default class Camera {
         }
 
     drawAgents(gameState: GameStateProcessed){
-        const context = this.canvas.getContext("2d");
-
         for (const agent of gameState.agents){
             this.drawAgent(agent);
         }

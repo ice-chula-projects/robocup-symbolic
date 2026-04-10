@@ -8,6 +8,7 @@ export default class Camera {
     cameraSpeed = 10;
     zoomSpeed = .1;
     zoomBounds = { min: 0.1, max: 10 };
+    backgroundColor = "darkgreen";
     ballRadius = 5;
     ballColor = "white";
     borderWidth = 3;
@@ -85,6 +86,9 @@ export default class Camera {
     }
     drawField() {
         const context = this.canvas.getContext("2d");
+        //draw background
+        context.fillStyle = this.backgroundColor;
+        context.fillRect(0, 0, this.canvas.width, this.canvas.height);
         const topLeft = this.project(Vector2D.zero);
         const fieldDimensions = this.playback.currentGameLog.fieldSettings.dimensions;
         context.fillStyle = this.borderColor;
@@ -150,7 +154,6 @@ export default class Camera {
         }
     }
     drawAgents(gameState) {
-        const context = this.canvas.getContext("2d");
         for (const agent of gameState.agents) {
             this.drawAgent(agent);
         }
