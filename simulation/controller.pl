@@ -1,4 +1,4 @@
-:- module(controller, [action/1, action/3, controller/1, control/7, mirrorPosition/3, mirrorAgent/3, mirrorAgents/3, mirrorAction/3, mirrorBall/3]).
+:- module(controller, [action/1, action/3, controller/1, control/7]).
 :- use_module(math).
 :- use_module(agent).
 
@@ -197,39 +197,6 @@ control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_
     MaxPositionY is (Height / 2) + GoalSizeScaled,
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
     Action = action(move, vector(0, ClampedPositionY), 1).
-
-
-% Mirroring functions (TODO: move to mirroring.pl)
-mirror(AxisPosition, Position, MirroredPosition) :-
-    MirroredPosition is 2 * AxisPosition - Position.
-
-mirrorPosition(fieldSettings(vector(Width, _),_,_,_,_), vector(PositionX, PositionY), vector(NextPositionX, PositionY)) :-
-    MirrorPosition is Width / 2,
-    mirror(MirrorPosition, PositionX, NextPositionX).
-
-mirrorAction(_, action(rest), action(rest)).
-mirrorAction(FieldSettings, action(Name, Position, Factor), action(Name, MirroredPosition, Factor)) :-
-    mirrorPosition(FieldSettings, Position, MirroredPosition).
-
-mirrorBall(FieldSettings, ball(Position, vector(VelocityX, VelocityY)), ball(MirroredPosition, vector(MirroredVelocityX, VelocityY))) :-
-    mirrorPosition(FieldSettings, Position, MirroredPosition),
-    mirror(0, VelocityX, MirroredVelocityX).
-
-mirrorTeam(team(0), team(1)).
-mirrorTeam(team(1), team(0)).
-
-mirrorRelativePosition(vector(RelativePositionX, RelativePositionY), vector(MirroredRelativePositionX, RelativePositionY)) :-
-    MirroredRelativePositionX is 1 - RelativePositionX.
-
-mirrorAgent(FieldSettings, agent(Name, Role, Position, Energy, Team, RelativeInitialPosition, Controller), agent(Name, Role, MirroredPosition, Energy, MirroredTeam, MirroredRelativeInitialPosition, Controller)) :-
-    mirrorPosition(FieldSettings, Position, MirroredPosition),
-    mirrorRelativePosition(RelativeInitialPosition, MirroredRelativeInitialPosition),
-    mirrorTeam(Team, MirroredTeam).
-
-mirrorAgents(_, [], []).
-mirrorAgents(FieldSettings, [Agent | T], [MirroredAgent | MirroredAgents]) :-
-    mirrorAgent(FieldSettings, Agent, MirroredAgent),
-    mirrorAgents(FieldSettings, T, MirroredAgents).
 
 % TODO: move this to math
 clamp(X, Min, _, Min) :- X < Min, !.
