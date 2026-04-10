@@ -1,4 +1,4 @@
-:- module(agent, [agentSettings/5, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/3, deviate/3, isColliding/3, resolveCollision/5, movementEnergyCost/3]).
+:- module(agent, [agentSettings/5, agent/7, canKick/4, kick/7, canMove/3, moveTowards/5, rest/3, resetAgent/4, deviate/3, isColliding/3, resolveCollision/5, movementEnergyCost/3]).
 :- use_module(math).
 :- use_module(controller, [controller/1]).
 
@@ -56,9 +56,9 @@ agentSettings(kickSettings(_, _, _), runSettings(_, _), energySettings(_, _), de
 % Position - current Position
 % Energy - current Energy
 % team - which team the agent is on
-% IntialPosition - where the agent starts on round reset
+% RelativeInitialPosition - relative position from 0-1 representing where the agent starts on round reset relative to the agent's goal and the top of the field
 % Controller - the id to the agent's controller
-% shape: agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team), InitialPosition, controller(Controller)).
+% shape: agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team), RelativeInitialPosition, controller(Controller)).
 agent(_, _, vector(_, _), _, team(_), vector(_, _), controller(_)).
 
 % checks if an agent can kick
@@ -76,7 +76,7 @@ canKick(AgentSettings, agent(_, _, Position, Energy, _, _, _), ball(BallPosition
 % to the velocity of the ball
 % then subtracts the appropriate amount of energy and add energy regeneration
 % finally applies energy regeneration
-kick(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), ball(BallPosition, BallVelocity), KickTowardsPosition, KickStrengthFactor, agent(Name, Role, Position, NextEnergy, Team, InitialPosition, Controller), ball(BallPosition, NextBallVelocity)) :-
+kick(AgentSettings, agent(Name, Role, Position, Energy, Team, RelativeInitialPosition, Controller), ball(BallPosition, BallVelocity), KickTowardsPosition, KickStrengthFactor, agent(Name, Role, Position, NextEnergy, Team, RelativeInitialPosition, Controller), ball(BallPosition, NextBallVelocity)) :-
     AgentSettings = agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _, _),
 
     EffectiveKickStrength is KickMaxStrength * KickStrengthFactor,
@@ -101,7 +101,7 @@ canMove(AgentSettings, agent(_, _, _, Energy, _, _, _), DistanceFactor) :-
 
 % moves the agent towards the TargetPosition, using DistanceFactor to determine the max distance the agent can travel
 % then applies energy regeneration
-moveTowards(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), TargetPosition, DistanceFactor, agent(Name, Role, NextPosition, NextEnergy, Team, InitialPosition, Controller)) :-
+moveTowards(AgentSettings, agent(Name, Role, Position, Energy, Team, RelativeInitialPosition, Controller), TargetPosition, DistanceFactor, agent(Name, Role, NextPosition, NextEnergy, Team, RelativeInitialPosition, Controller)) :-
     moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPosition, EnergyCost),
     NextEnergy_1 is Energy - EnergyCost,
     regenerateEnergy(AgentSettings, NextEnergy_1, NextEnergy).
@@ -133,7 +133,7 @@ moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPositio
     add(Position, MovementVector, NextPosition).
 
 % increases energy regeneration for that turn by calling regenerateEnergy twice.
-rest(AgentSettings, agent(Name, Role, Position, Energy, Team, InitialPosition, Controller), agent(Name, Role, Position, NextEnergy, Team, InitialPosition, Controller)) :-
+rest(AgentSettings, agent(Name, Role, Position, Energy, Team, RelativeInitialPosition, Controller), agent(Name, Role, Position, NextEnergy, Team, RelativeInitialPosition, Controller)) :-
     regenerateEnergy(AgentSettings, Energy, NextEnergy_1),
     regenerateEnergy(AgentSettings, NextEnergy_1, NextEnergy).
 
@@ -143,11 +143,11 @@ regenerateEnergy(agentSettings(_, _, energySettings(MaxEnergy, EnergyRegeneratio
     NextEnergy_1 is Energy + EnergyRegenerated,
     clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _, _), NextEnergy_1, NextEnergy).
 
-% sets the agent position to initial position
+% sets the agent position to initial position (mirroring for team(1) is handled within simulation.pl)
 % and also set the agent energy to MaxEnergy
-resetAgent(agentSettings(_, _, energySettings(MaxEnergy, _), _, _), agent(Name, Role, _, _, Team, InitialPosition, Controller), agent(Name, Role, NextPosition, NextEnergy, Team, InitialPosition, Controller)) :-
-    NextPosition = InitialPosition,
-    NextEnergy = MaxEnergy.
+resetAgent(fieldSettings(vector(Width, Height), _, _, _, _), agentSettings(_, _, energySettings(MaxEnergy, _), _, _), agent(Name, Role, _, _, Team, vector(RelativeInitialPositionX, RelativeInitialPositionY), Controller), agent(Name, Role, vector(PositionX, PositionY), MaxEnergy, Team, vector(RelativeInitialPositionX, RelativeInitialPositionY), Controller)) :-
+    PositionX is Width * RelativeInitialPositionX,
+    PositionY is Height * RelativeInitialPositionY.
 
 % ensures the energy isn't above MaxEnergy
 % by clamping it
@@ -230,10 +230,10 @@ isColliding(agentSettings(_, _, _, _, AgentRadius), agent(_, _, Position, _, _, 
 % resolves collisons by moving each agent half the overlap distance away from each other
 % resulting in both agents just barly touching each other
 resolveCollision(agentSettings(_, _, _, _, AgentRadius),
-    agent(Name, Role, Position, Energy, Team, InitialPosition, Controller),
-    agent(OtherName, OtherRole, OtherPosition, OtherEnergy, OtherTeam, OtherInitialPosition, OtherController),
-    agent(Name, Role, NextPosition, Energy, Team, InitialPosition, Controller),
-    agent(OtherName, OtherRole, NextOtherPosition, OtherEnergy, OtherTeam, OtherInitialPosition, OtherController)
+    agent(Name, Role, Position, Energy, Team, RelativeInitialPosition, Controller),
+    agent(OtherName, OtherRole, OtherPosition, OtherEnergy, OtherTeam, OtherRelativeInitialPosition, OtherController),
+    agent(Name, Role, NextPosition, Energy, Team, RelativeInitialPosition, Controller),
+    agent(OtherName, OtherRole, NextOtherPosition, OtherEnergy, OtherTeam, OtherRelativeInitialPosition, OtherController)
 ) :-
     sub(OtherPosition, Position, DifferenceVector),
     magnitude(DifferenceVector, Distance),

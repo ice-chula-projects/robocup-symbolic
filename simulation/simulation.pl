@@ -47,12 +47,22 @@ score(Team0, Team1) :-
 team(0).
 team(1).
 
-% runs the simulation from the given initial state and exports it when resolved
-runSimulation(InitialState) :-
+% runs the simulation from the given settings and agents and exports it when resolved
+runSimulation(FieldSettings, AgentSettings, Agents) :-
+    resetRound(FieldSettings, AgentSettings, Agents, InitialAgents, InitialBall),
+    InitialState = state(FieldSettings, AgentSettings, gameState(InitialBall, InitialAgents, 1, score(0,0))),
+    runSimulation(InitialState, GameStates),
+    exportState(FieldSettings, AgentSettings, GameStates),
+    !.
+
+% same as runSimulation but takes in the initialState predicate directly
+% meant for debugging and testing purposes only
+runSimulationFromInitialState(InitialState) :-
     runSimulation(InitialState, GameStates),
     InitialState = state(FieldSettings, AgentSettings, _),
     exportState(FieldSettings, AgentSettings, GameStates),
     !.
+
 
 % base case, a game is "over" when any team has more score than WinningScore
 runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, gameState(_, _, _, score(Team0, Team1))), []) :-
@@ -175,19 +185,29 @@ step(state(FieldSettings, AgentSettings, gameState(Ball, Agents, Round, Score)),
 
 % returns all agents to initial poition (defined within the agent itself)
 % and returns the ball to the center with 0 velocity
-resetRound(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agents, NextAgents, NextBall) :-
-    resetAgents(AgentSettings, Agents, NextAgents),
+resetRound(FieldSettings, AgentSettings, Agents, NextAgents, NextBall) :-
+    resetAgents(FieldSettings, AgentSettings, Agents, NextAgents),
+    FieldSettings = fieldSettings(vector(Width, Height), _, _, _, _),
     BallStartX is Width / 2,
     BallStartY is Height / 2,
     NextBall = ball(vector(BallStartX, BallStartY), vector(0,0)).
 
 % recursively calls resetAgent on all agents 
+% then mirrors only the position of the agent if they are on team(1)
 % resetAgent is defined within agent.pl
-resetAgents(_, [], []).
-resetAgents(AgentSettings, [Agent | T], [NextAgent | Agents]) :-
-    resetAgent(AgentSettings, Agent, NextAgent),
-    resetAgents(AgentSettings, T, Agents).
+resetAgents(_, _, [], []).
+resetAgents(FieldSettings, AgentSettings, [Agent | T], [NextAgent | Agents]) :-
+    resetAgent(FieldSettings, AgentSettings, Agent, NextAgent_1),
+    mirrorAgentPositionIfTeam1(FieldSettings, NextAgent_1, NextAgent),
+    resetAgents(FieldSettings, AgentSettings, T, Agents).
 
+% idk what to call this predicate, i cant put it in resetAgents directly because NextAgent would not be available in the branch
+mirrorAgentPositionIfTeam1(FieldSettings, Agent, NextAgent) :-
+    Agent = agent(Name, Role, Position, Energy, team(1), RelativeInitialPosition, Controller) ->
+    mirrorPosition(FieldSettings, Position, MirroredPosition),
+    NextAgent = agent(Name, Role, MirroredPosition, Energy, team(1), RelativeInitialPosition, Controller)
+    ;
+    NextAgent = Agent.
 % moves ball according to it's velocity
 updateBallPosition(ball(Position, Velocity), ball(NextPosition, Velocity)) :-
     add(Position, Velocity, NextPosition).
@@ -332,7 +352,7 @@ resolveAgentCollision(AgentSettings, Agent, [OtherAgent | T], NextAgent, [NextOt
     resolveAgentCollision(AgentSettings, Agent, T, NextAgent, NextOtherAgents).
 
 
-resolveAgentWallCollision(fieldSettings(vector(Width, Height), _, _, _, _), agent(Name, Role, vector(PositionX, PositionY), Energy, Team, InitialPosition, Controller), agent(Name, Role, vector(NextPositionX, NextPositionY), Energy, Team, InitialPosition, Controller)) :-
+resolveAgentWallCollision(fieldSettings(vector(Width, Height), _, _, _, _), agent(Name, Role, vector(PositionX, PositionY), Energy, Team, RelativeInitialPosition, Controller), agent(Name, Role, vector(NextPositionX, NextPositionY), Energy, Team, RelativeInitialPosition, Controller)) :-
     resolveAgentWallCollision(Width, PositionX, NextPositionX),
     resolveAgentWallCollision(Height, PositionY, NextPositionY).
 
