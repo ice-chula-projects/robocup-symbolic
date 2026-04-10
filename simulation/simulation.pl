@@ -64,7 +64,7 @@ runSimulation(InitialState, [NextGameState | GameStates]) :-
     NextState = state(_, _, NextGameState),
     runSimulation(NextState, GameStates).
 
-exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunBaseEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation), AgentRadius), GameStates) :-
+exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunMaxEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation), AgentRadius), GameStates) :-
     gameStatesToJson(GameStates, GameStateJsons),
     GameJson = json{
         fieldSettings: json{
@@ -85,7 +85,7 @@ exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWal
            },
            runSettings: json{
                 runMaxDistance: RunMaxDistance,
-                runBaseEnergy: RunBaseEnergy
+                runMaxEnergy: RunMaxEnergy
            },
            energySettings: json{
                 maxEnergy: MaxEnergy,

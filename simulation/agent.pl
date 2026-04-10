@@ -15,12 +15,12 @@ kickSettings(KickReach, KickMaxStrength, KickMaxEnergy) :-
     KickMaxEnergy >= 0.
 
 % RunMaxDistance - Max distance an agent is able to move in 1 tick
-% RunBaseEnergy - Energy Expended when an agent moves a distance of 1 unit
-runSettings(RunMaxDistance, RunBaseEnergy) :-
+% RunMaxEnergy - Energy Expended when an agent moves the max distance
+runSettings(RunMaxDistance, RunMaxEnergy) :-
     number(RunMaxDistance),
     RunMaxDistance > 0,
-    number(RunBaseEnergy),
-    RunBaseEnergy >= 0.
+    number(RunMaxEnergy),
+    RunMaxEnergy >= 0.
 
 % MaxEnergy - Max energy an agent can have
 % EnergyRegenerationPerTick - How much energy on average does the agent regenerate every update
@@ -45,7 +45,7 @@ deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviatio
     EnergyRegenerationDeviation >= 0.
 
 % AgentSettings
-% shape agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunBaseEnergy, MaxEnergy, EnergyRegenerationPerTick, DeviationSettings)
+% shape agentSettings(KickReach, KickMaxStrength, KickMaxEnergy, RunMaxDistance, RunMaxEnergy, MaxEnergy, EnergyRegenerationPerTick, DeviationSettings)
 agentSettings(kickSettings(_, _, _), runSettings(_, _), energySettings(_, _), deviationSettings(_, _, _, _), AgentRadius) :-
     number(AgentRadius),
     AgentRadius > 0.
@@ -157,30 +157,44 @@ clampEnergy(agentSettings(_, _, energySettings(MaxEnergy, _), _, _), Energy, Nex
         ;
         NextEnergy = Energy.
 
+
+movementEnergyCost(agentSettings(_, runSettings(RunMaxDistance, RunMaxEnergy), _, _, _), Distance, EnergyCost) :-
+    % so that you can just pass in X for distance or energy cost and get the answer instead of using 2 seperate functors
+    nonvar(Distance), var(EnergyCost) ->
+    calculateBaseCost(RunMaxDistance, RunMaxEnergy, RunBaseEnergy),
+    calculateMovementEnergyCost(RunBaseEnergy, Distance, EnergyCost)
+    ;
+    calculateBaseCost(RunMaxDistance, RunMaxEnergy, RunBaseEnergy),
+    calculateInverseMovementEnergyCost(RunBaseEnergy, EnergyCost, Distance).
+
 % formula: https://www.desmos.com/calculator/2th08sixr7
-% the logic is that moving a distance of 1 takes RunBaseEnergy of Energy
-% then for every doubling of RunBaseEnergy the distance is multiplied by 1.5
-% ex. RunBaseEnergy = 1
+% the logic is that moving a distance of 1 takes some amount of Energy
+% then for every doubling of that amount the distance is multiplied by 1.5
+% ex. running a distance of 1 takes 1 energy
 % EnergyCost = 1 when distance = 1
 % EnergyCost = 2 when distance = 1.5
 % EnergyCost = 4 when distance = 1.5 * 1.5
-movementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _, _), Distance, EnergyCost) :-
-    %so that you can just pass in X or distance or energy cost and get the answer isntead of using 2 seperate functors
-    var(Distance), nonvar(EnergyCost) ->
-    inverseMovementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _, _), EnergyCost, Distance)
-    ;
+% etc.
+calculateMovementEnergyCost(BaseEnergyCost, Distance, EnergyCost) :-
     Distance > 0 ->
-    EnergyCost is RunBaseEnergy * (5.52626008648 ** log(Distance))
+    EnergyCost is BaseEnergyCost * (5.52626008648 ** log(Distance))
     ;
     EnergyCost = 0.
 
 % calculates the distance traveled, given energySpent
-inverseMovementEnergyCost(agentSettings(_, runSettings(_, RunBaseEnergy), _, _, _), EnergyCost, Distance) :-
+calculateInverseMovementEnergyCost(BaseEnergyCost, EnergyCost, Distance) :-
     EnergyCost > 0 ->
-    Distance is (1.79492367603 ** log(EnergyCost)) / RunBaseEnergy
+    Distance is (1.79492367603 ** log(EnergyCost)) / BaseEnergyCost
     ;
     Distance = 0.
 
+% calculates the cost to run a distance of 1, given running a distance of Distance costs EnergyCost energy
+calculateBaseCost(Distance, EnergyCost, BaseEnergyCost) :-
+    (Distance > 0, EnergyCost > 0) ->
+    calculateMovementEnergyCost(1, Distance, DefaultEnergyCost),
+    BaseEnergyCost is EnergyCost / DefaultEnergyCost
+    ;
+    BaseEnergyCost = 0.
 % lineraly interpolates between 0 and KickMaxEnergy using KickStrengthFactor
 kickEnergyCost(agentSettings(kickSettings(_, _, KickMaxEnergy), _, _, _, _), KickStrengthFactor, EnergyCost) :-
     EnergyCost is KickMaxEnergy * KickStrengthFactor.

@@ -26,7 +26,7 @@ export type AgentSettings = {
     },
     runSettings: {
         runMaxDistance: number,
-        runBaseEnergy: number,
+        runMaxEnergy: number,
     },
     energySettings: {
         maxEnergy: number,
