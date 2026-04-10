@@ -47,12 +47,14 @@ score(Team0, Team1) :-
 team(0).
 team(1).
 
+% runs the simulation from the given initial state and exports it when resolved
 runSimulation(InitialState) :-
     runSimulation(InitialState, GameStates),
     InitialState = state(FieldSettings, AgentSettings, _),
     exportState(FieldSettings, AgentSettings, GameStates),
     !.
 
+% base case, a game is "over" when any team has more score than WinningScore
 runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, gameState(_, _, _, score(Team0, Team1))), []) :-
     Team0 >= WinningScore;
     Team1 >= WinningScore.
@@ -260,12 +262,15 @@ updateAgents(FieldSettings, AgentSettings, [Agent | T], ProcessedAgents, Ball, [
     updateAgents(FieldSettings, AgentSettings, T, NextProcessedAgents, NextBall_1, Agents, NextBall).
 
 % sends information about the game to the agent's controller
-% then calls takeAction() on the action to process tat action
+% then calls takeAction() on the action to process that action
 updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
     Agent = agent(_, _, _, _, team(0), _, Controller),
     control(Controller, FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action),
     takeAction(Action, AgentSettings, Agent, Ball, NextAgent, NextBall), !.
 
+% team(1) agents are "mirrored" so that from their controller's perspective, they appear to be team(0),
+% this is so that when programming the ai you only need to program for team(0) and the ai will still
+% work when applied to team(1)
 updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, NextBall) :-
     Agent = agent(_, _, _, _, team(1), _, Controller),
     mirrorAgent(FieldSettings, Agent, MirroredAgent),
@@ -274,35 +279,6 @@ updateAgent(FieldSettings, AgentSettings, OtherAgents, Agent, Ball, NextAgent, N
     control(Controller, FieldSettings, AgentSettings, MirroredAgent, MirroredOtherAgents, MirroredBall, Action),
     mirrorAction(FieldSettings, Action, MirroredAction),
     takeAction(MirroredAction, AgentSettings, Agent, Ball, NextAgent, NextBall), !.
-
-updateAgentCollisions(_, _, [], []).
-updateAgentCollisions(FieldSettings, AgentSettings, [Agent | OtherUnresolvedAgents], [NextAgent | Agents]) :-
-    resolveAgentWallCollision(FieldSettings, Agent, NextAgent_1),
-    resolveAgentCollision(AgentSettings, NextAgent_1, OtherUnresolvedAgents, NextAgent, NextOtherAgents),
-    updateAgentCollisions(FieldSettings, AgentSettings, NextOtherAgents, Agents).
-
-resolveAgentCollision(_, Agent, [], Agent, []).
-resolveAgentCollision(AgentSettings, Agent, [OtherAgent | T], NextAgent, [NextOtherAgent | NextOtherAgents]) :-
-    isColliding(AgentSettings, Agent, OtherAgent) ->
-    resolveCollision(AgentSettings, Agent, OtherAgent, NextAgent_1, NextOtherAgent),
-    resolveAgentCollision(AgentSettings, NextAgent_1, T, NextAgent, NextOtherAgents)
-    ;
-    NextOtherAgent = OtherAgent,
-    resolveAgentCollision(AgentSettings, Agent, T, NextAgent, NextOtherAgents).
-
-
-resolveAgentWallCollision(fieldSettings(vector(Width, Height), _, _, _, _), agent(Name, Role, vector(PositionX, PositionY), Energy, Team, InitialPosition, Controller), agent(Name, Role, vector(NextPositionX, NextPositionY), Energy, Team, InitialPosition, Controller)) :-
-    resolveAgentWallCollision(Width, PositionX, NextPositionX),
-    resolveAgentWallCollision(Height, PositionY, NextPositionY).
-
-resolveAgentWallCollision(WallPosition, Position, NextPosition) :-
-    Position < 0 ->
-    NextPosition = 0
-    ;
-    Position > WallPosition ->
-    NextPosition = WallPosition
-    ;
-    NextPosition = Position.
 
 % handle the move command
 % if agent doesn't have enough energy to do so (or the DistanceFactor is invalid) defaults to the rest command
@@ -333,3 +309,39 @@ takeAction(action(kick, KickTowardsPosition, KickStrengthFactor), AgentSettings,
 takeAction(action(rest), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
     rest(AgentSettings, Agent, NextAgent),
     NextBall = Ball.
+
+% checks and resolves for all agent collisions
+% notably only passes in OtherUnresolvedAgents for agent - agent collision detection
+% since any agent already processed by resolveAgentCollision would have already checked
+% for it's collision with all the other agents so they do not need to be checked for again
+updateAgentCollisions(_, _, [], []).
+updateAgentCollisions(FieldSettings, AgentSettings, [Agent | OtherUnresolvedAgents], [NextAgent | Agents]) :-
+    resolveAgentWallCollision(FieldSettings, Agent, NextAgent_1),
+    resolveAgentCollision(AgentSettings, NextAgent_1, OtherUnresolvedAgents, NextAgent, NextOtherAgents),
+    updateAgentCollisions(FieldSettings, AgentSettings, NextOtherAgents, Agents).
+
+% check Agent against every agent in OtherAgents
+% if Agent is colliding with the other agent resolve it
+resolveAgentCollision(_, Agent, [], Agent, []).
+resolveAgentCollision(AgentSettings, Agent, [OtherAgent | T], NextAgent, [NextOtherAgent | NextOtherAgents]) :-
+    isColliding(AgentSettings, Agent, OtherAgent) ->
+    resolveCollision(AgentSettings, Agent, OtherAgent, NextAgent_1, NextOtherAgent),
+    resolveAgentCollision(AgentSettings, NextAgent_1, T, NextAgent, NextOtherAgents)
+    ;
+    NextOtherAgent = OtherAgent,
+    resolveAgentCollision(AgentSettings, Agent, T, NextAgent, NextOtherAgents).
+
+
+resolveAgentWallCollision(fieldSettings(vector(Width, Height), _, _, _, _), agent(Name, Role, vector(PositionX, PositionY), Energy, Team, InitialPosition, Controller), agent(Name, Role, vector(NextPositionX, NextPositionY), Energy, Team, InitialPosition, Controller)) :-
+    resolveAgentWallCollision(Width, PositionX, NextPositionX),
+    resolveAgentWallCollision(Height, PositionY, NextPositionY).
+
+% snaps agent to wall (assuming there is a wall at 0 and WallPosition)
+resolveAgentWallCollision(WallPosition, Position, NextPosition) :-
+    Position < 0 ->
+    NextPosition = 0
+    ;
+    Position > WallPosition ->
+    NextPosition = WallPosition
+    ;
+    NextPosition = Position.
