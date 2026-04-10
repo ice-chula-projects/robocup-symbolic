@@ -305,19 +305,25 @@ resolveAgentWallCollision(WallPosition, Position, NextPosition) :-
     NextPosition = Position.
 
 % handle the move command
-% if agent doesn't have enough energy to do so defaults to the rest command
+% if agent doesn't have enough energy to do so (or the DistanceFactor is invalid) defaults to the rest command
 takeAction(action(move, TargetPosition, DistanceFactor), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
-    canMove(AgentSettings, Agent, DistanceFactor) ->
+    % checks if the action is valid (no cheating) (if the predicate evaluates to true then the action is valid)
+    % then also checks if agent actually has enough energy to move that far
+    (call(action(move, TargetPosition, DistanceFactor)),
+    canMove(AgentSettings, Agent, DistanceFactor)) ->
         moveTowards(AgentSettings, Agent, TargetPosition, DistanceFactor, NextAgent),
         NextBall = Ball
         ;
         rest(AgentSettings, Agent, NextAgent),
         NextBall = Ball.
 
-%handle the kick command
-% if agent doesn't have enough energy to do so or the ball is'nt within range defaults to the rest command
+% handle the kick command
+% if agent doesn't have enough energy to do so or the ball isn't within range defaults to the rest command
 takeAction(action(kick, KickTowardsPosition, KickStrengthFactor), AgentSettings, Agent, Ball, NextAgent, NextBall) :-
-    canKick(AgentSettings, Agent, Ball, KickStrengthFactor) ->
+    % checks if the action is valid (no cheating) (if the predicate evaluates to true then the action is valid)
+    % then also checks if agent can actually kick
+    (call(action(kick, KickTowardsPosition, KickStrengthFactor)),
+    canKick(AgentSettings, Agent, Ball, KickStrengthFactor)) ->
         kick(AgentSettings, Agent, Ball, KickTowardsPosition, KickStrengthFactor, NextAgent, NextBall)
         ;
         rest(AgentSettings, Agent, NextAgent),
