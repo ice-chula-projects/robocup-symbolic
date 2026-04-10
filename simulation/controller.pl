@@ -33,102 +33,154 @@ control(controller(simple), fieldSettings(vector(Width, Height),_,_,_,_), AgentS
         Ball = ball(BallPosition, _),
         Action = action(move, BallPosition, 1).
 
-control(controller(blocker), _FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :-
-    % Will pass the ball to the nearest ally
+/* ATTACKERS
+
+Attackers make up the offense of the game. When they get the ball, they will attempt to score
+by shooting at the goal.
+
+There are three types of defender controllers in this project: 'topwing', 'bottomwing', and 'striker'.
+(TODO: Condense topwing and bottomwing into one role)
+*/
+
+/* WINGS
+
+'topwing' refers to the AI used for the 'Top Wing' role. They dominate the top side of the field
+by having an adaptive default position that's always situated above the ball.
+(The middle of the ball's current position and a spot on the top of the opposite side)
+If they are the nearest agent from the ball, they will attempt to chase it.
+*/
+control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    canKick(AgentSettings, Agent, Ball, 1) -> 
+        kickToGoal(FieldSettings, Action);
+
+    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
+        moveToBall(dash, Ball, AgentSettings, Action);
+
+    anchorAt(3/4, 0, Ball, FieldSettings, TargetPosition),
+    moveToPosition(TargetPosition, AgentSettings, Action)
+).
+
+% 'bottomwing' is the same thing but at the bottom. (TODO: condense the roles to wing(0) and wing(1))
+control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    canKick(AgentSettings, Agent, Ball, 1) -> 
+        kickToGoal(FieldSettings, Action);
+
+    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
+        moveToBall(dash, Ball, AgentSettings, Action);
+ 
+    anchorAt(3/4, 1, Ball, FieldSettings, TargetPosition),
+    moveToPosition(TargetPosition, AgentSettings, Action)
+).
+
+/* STRIKERS
+
+'striker' refers to the AI used for the 'Striker' role. They are the biggest threat on the field,
+attempting to score a goal around the center area. 
+If they are nearest to the ball, they will attempt to pursue it.
+*/
+control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    canKick(AgentSettings, Agent, Ball, 1) -> 
+        kickToGoal(FieldSettings, Action);
+
+    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
+        moveToBall(adaptive(Agent), Ball, AgentSettings, Action);
+ 
+    anchorAt(4/5, 1/2, Ball, FieldSettings, TargetPosition),
+    moveToPosition(TargetPosition, AgentSettings, Action)
+).
+
+/* MIDFIELDERS
+
+Midfielders stay in the middle of the field, their priority is to send the ball
+they recieve from defenders forward to the attackers. They don't naturally
+score goals.
+
+There is only one midfielder controller, aptly named 'midfield' for the "Central Midfield" role.
+(TODO: Instead of 1 midfield, make that two)
+*/
+control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) ->
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _), _Distance),
+        Action = action(kick, BestPassTargetPosition, 0.5);
+
+    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
+        moveToBall(adaptive(Agent), Ball, AgentSettings, Action);
+
+    anchorAt(3/5, 1/2, Ball, FieldSettings, TargetPosition),
+    moveToPosition(TargetPosition, AgentSettings, Action)
+).
+
+
+/* DEFENDERS
+
+Defenders will focus on intercepting the ball from attackers kicking at the goal.
+If they recieve a ball, they will kick it to the nearest ally in front of them 
+(or just the nearest if nobody's in front of them)
+
+There are two types of defender controllers in this project: 'back' and 'goalkeeper'.
+*/
+
+/* BACKS
+
+'back' refers to the AI used for 'Top Back', 'Bottom Back', and 'Center Back' roles. They use a perpendicular 
+pathfinding algorithm to find a spot where they can move to that intercepts the ball's trajectory.
+If they are far enough from the ball, they will return to their home position (initialPosition) and rest
+If they are the nearest agent from the ball, they will attempt to chase it.
+*/
+control(controller(blocker /*TODO: change blocker to back*/), _FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    % Will pass the ball to the best (nearest and in front) ally
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _), _Distance),
         Action = action(kick, BestPassTargetPosition, 0.65)
     ;
-    % Move to the position between your goal and the nearest agent
-    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
-        predictBallAdd(Ball, PredictedBallPosition),
-        dashingMovementFactor(AgentSettings, DashingMovementFactor),
-        Action = action(move, PredictedBallPosition, DashingMovementFactor)
-    ;
+    
+    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
+        moveToBall(dash, Ball, AgentSettings, Action);
+
     Agent = agent(_, _, CurrentPosition, _, _, _, _),
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     predictBallPosition(Agent, Ball, PredictedBallPosition),
     distance(CurrentPosition, PredictedBallPosition, DistanceToPredictedPosition),
-    chooseDestination(Agent, Ball, PredictedBallPosition, Destination),
+    chooseDestination(Agent, Ball, PredictedBallPosition, TargetPosition),
     DistanceToPredictedPosition > KickReach ->
-        sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
-        Action = action(move, Destination, SustainableMovementFactor)
-    ;
+        moveToPosition(TargetPosition, AgentSettings, Action);
+    
     Action = action(rest)
 ).
 
-control(controller(topwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
-    % Will kick towards the goal if given the chance
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        GoalHeight is Height/2,
-        Action = action(kick, vector(Width,GoalHeight), 1)
-    ;
-    % Move to the position between your goal and the nearest agent
-    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
-        predictBallAdd(Ball, PredictedBallPosition),
-        dashingMovementFactor(AgentSettings, DashingMovementFactor),
-        Action = action(move, PredictedBallPosition, DashingMovementFactor)
-    ;
-    Ball = ball(BallPosition, _),
-    ThreeQuartersWidth is Width * 3 / 4,
-    middle(BallPosition, vector(ThreeQuartersWidth, 0), Middle),
-    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
-    Action = action(move, Middle, SustainableMovementFactor)).
+/* GOALKEEPER
 
-control(controller(bottomwing), fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, Agent, OtherAgents, Ball, Action) :-
-    % Will kick towards the goal if given the chance
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        GoalHeight is Height/2,
-        Action = action(kick, vector(Width, GoalHeight), 1)
-    ;
-    % If you're closest to the ball, move to it
-    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
-        predictBallAdd(Ball, PredictedBallPosition),
-        dashingMovementFactor(AgentSettings, DashingMovementFactor),
-        Action = action(move, PredictedBallPosition, DashingMovementFactor)
-    ;
-    % If you're far from the ball, go to a front position relative to the ball.
-    Ball = ball(BallPosition, _),
-    ThreeQuartersWidth is Width * 3 / 4,
-    middle(BallPosition, vector(ThreeQuartersWidth, Height), Middle),
-    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
-    Action = action(move, Middle, SustainableMovementFactor)).
-
-control(controller(midfield), fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
-    % If can kick, kick towards the goal
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.5)
-    ;
-    % Move to the position between your goal and the nearest agent
-    (closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
-        predictBallAdd(Ball, PredictedBallPosition),
-        dashingMovementFactor(AgentSettings, DashingMovementFactor),
-        Action = action(move, PredictedBallPosition, DashingMovementFactor)
-    ;
-    Ball = ball(BallPosition, _),
-    ThreeFiftsWidth is Width * 3 / 5,
-    GoalHeight is Height / 2,
-    middle(BallPosition, vector(ThreeFiftsWidth, GoalHeight), Middle),
-    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
-    Action = action(move, Middle, SustainableMovementFactor)).
-
+'goalkeeper' refers to the AI used for 'Goalkeeper', roles. Goalkeepers are restricted
+to moving up and down in a straight line, they will try to approach the ball and pass
+it to one of the three backs. Even if they are the closest to the ball, agents of
+other roles will ignore that and continue to pursue the ball, since the goalkeeper cannot
+move in the X-axis to catch it.
+(TODO: Goalkeepers should stay in the middle and only move up and down when necessary
+to conserve energy)
+*/
 control(controller(goalkeeper), fieldSettings(vector(_, Height), GoalSize, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
-    % If can kick, kick towards the goal
-    canKick(AgentSettings, Agent, Ball, 0.65) ->
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 1)
+    % Will pass the ball to the best (nearest and in front) ally
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _), _Distance),
+        Action = action(kick, BestPassTargetPosition, 0.65)
     ;
-    % It can only move up and down based on goal size
+    % The goalkeeper can only move up and down based on goal size
     Ball = ball(BallPosition, _),
     BallPosition = vector(_, BallPositionY),
     GoalSizeScaled is GoalSize * Height / 2,
     MinPositionY is (Height / 2) - GoalSizeScaled,
     MaxPositionY is (Height / 2) + GoalSizeScaled,
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
-    dashingMovementFactor(AgentSettings, DashingMovementFactor),
-    Action = action(move, vector(0, ClampedPositionY), DashingMovementFactor).
+    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
 
+
+    Action = action(move, vector(0, ClampedPositionY), SustainableMovementFactor).
+
+/* DYNAMIC ROLES
+TODO: Add dynamic roles for backs, when backs enter the front, they become wings.
+*/
+
+% TODO: Implement Pong mode (2 Goalkeepers fighting for the ball)
 control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, _OtherAgents, Ball, Action) :-
     % If can kick, kick towards the goal
     canKick(AgentSettings, Agent, Ball, 1) ->
@@ -138,7 +190,7 @@ control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_
         Action = action(kick, vector(Width, RandomPositionY), 1)
     ;
     % It can only move up and down based on goal size
-    predictBallAdd(Ball, PredictedPosition),
+    naiveFutureBallPosition(Ball, PredictedPosition),
     PredictedPosition = vector(_, BallPositionY),
     GoalSizeScaled is GoalSize * Height / 2,
     MinPositionY is (Height / 2) - GoalSizeScaled,
@@ -146,6 +198,8 @@ control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
     Action = action(move, vector(0, ClampedPositionY), 1).
 
+
+% Mirroring functions (TODO: move to mirroring.pl)
 mirror(AxisPosition, Position, MirroredPosition) :-
     MirroredPosition is 2 * AxisPosition - Position.
 
@@ -174,38 +228,24 @@ mirrorAgents(FieldSettings, [Agent | T], [MirroredAgent | MirroredAgents]) :-
     mirrorAgent(FieldSettings, Agent, MirroredAgent),
     mirrorAgents(FieldSettings, T, MirroredAgents).
 
-
-agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
-    distance(FirstPosition, SecondPosition, Distance).
-
-bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
-    Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
-    exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
-    include(agentInTeam(0), NonGoalKeepers, Allies),
-    findall(Score-A, (
-        member(A, Allies), A = agent(_, _, vector(AX, _), _, _, _, _),
-        agentDistance(A, Agent, Distance),
-        Score is (AX - AgentPositionX) - Distance
-    ), Pairs),
-
-    max_member(_Score-BestPassTarget, Pairs).
-
-agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
-isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
-
+% TODO: move this to math
 clamp(X, Min, _, Min) :- X < Min, !.
 clamp(X, _, Max, Max) :- X > Max, !.
 clamp(X, _, _, X).
 
+% Predicates for filtering
+agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
+isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
+
+/* Move action utils */
 % Uses a perpendicular line intersecting the ball's trajectory and the agent's position
 predictBallPosition(
     agent(_, _, vector(AgentPositionX, AgentPositionY), _, _, _, _),
     ball(vector(BallPositionX, BallPositionY), vector(BallVelocityX, BallVelocityY)),
     /* returns */ PredictedBallPosition
 ) :- (
-    ((BallVelocityX =:= 0) ; (BallVelocityY =:= 0) ; ((BallVelocityY / BallVelocityX)**2 + 1 =:= 0)) -> (
-        PredictedBallPosition = vector(AgentPositionX, AgentPositionY)
-    );
+    ((BallVelocityX =:= 0) ; (BallVelocityY =:= 0) ; ((BallVelocityY / BallVelocityX)**2 + 1 =:= 0)) -> 
+        PredictedBallPosition = vector(AgentPositionX, AgentPositionY);
 
     % Ball movement linear equation:
     % BallPositionY = M * BallPositionX + C
@@ -220,10 +260,18 @@ predictBallPosition(
     PredictedBallPosition = vector(X, Y)
 ).
 
-closestDistanceToBall(AllAgents, ball(BallPosition, _), ClosestAgent) :-
+% Simulates the ball moving for 5 steps and retuns its position, used for accurate ball-chasing
+naiveFutureBallPosition(ball(BallPosition, BallVelocity), PredictedPosition) :-
+    scale(BallVelocity, 5, ScaledVelocity),
+    add(BallPosition, ScaledVelocity, PredictedPosition).
+
+distanceToBall(agent(_, _, AgentPosition, _, _, _, _), ball(BallPosition, _), DistanceToBall) :-
+    distance(AgentPosition, BallPosition, DistanceToBall).
+    
+closestDistanceToBall(AllAgents, Ball, ClosestAgent) :-
     exclude(isGoalkeeper, AllAgents, NonGoalKeepers),
     include(agentInTeam(0), NonGoalKeepers, Allies),
-    findall(D-A, (member(A, Allies), A = agent(_, _, AgentPosition, _, _, _, _), distance(BallPosition, AgentPosition, D)), Pairs),
+    findall(DistanceToBall-A, (member(A, Allies), distanceToBall(A, Ball, DistanceToBall)), Pairs),
     min_member(_Distance-ClosestAgent, Pairs).
 
 % Decides between traveling to the computed destination or the home position depending on the direction of the movement.
@@ -253,18 +301,57 @@ chooseDestination(
     Destination = ComputedDestination
 ).
 
-% TODO: change name to naiveBallPositionPrediction
-predictBallAdd(ball(BallPosition, BallVelocity), PredictedPosition) :-
-    scale(BallVelocity, 5, ScaledVelocity),
-    add(BallPosition, ScaledVelocity, PredictedPosition).
-
 % Finds the movement factor that allows the agent to move using the same energy as it decays
 sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
     AgentSettings = agentSettings(_, runSettings(RunMaxDistance, _), energySettings(_, EnergyRegenerationPerTick), _, _),
     movementEnergyCost(AgentSettings, SustainableDistance, EnergyRegenerationPerTick),
     SustainableMovementFactor is SustainableDistance / RunMaxDistance.
 
-% Finds the movement factor that allows the agent to move using the same energy as it decays
-dashingMovementFactor(AgentSettings, DashingMovementFactor) :-
+moveToBall(dash, Ball, AgentSettings, Action) :-
+    naiveFutureBallPosition(Ball, PredictedBallPosition),
     sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
-    DashingMovementFactor is SustainableMovementFactor * 1.5.
+    DashingMovementFactor is SustainableMovementFactor * 1.5,
+    Action = action(move, PredictedBallPosition, DashingMovementFactor).
+
+moveToBall(sustainable, Ball, AgentSettings, Action) :-
+    naiveFutureBallPosition(Ball, PredictedBallPosition),
+    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
+    Action = action(move, PredictedBallPosition, SustainableMovementFactor).
+
+moveToBall(adaptive(agent(_, _, _, Energy, _, _, _)), Ball, AgentSettings, Action) :- (
+    AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
+    Energy > MaxEnergy / 2 ->
+        moveToBall(dash, Ball, AgentSettings, Action);
+
+    moveToBall(sustainable, Ball, AgentSettings, Action)
+).
+
+moveToPosition(TargetPosition, AgentSettings, Action) :-
+    sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
+    Action = action(move, TargetPosition, SustainableMovementFactor).
+
+anchorAt(WidthPercentage, HeightPercentage, ball(BallPosition, _), fieldSettings(vector(Width, Height), _, _, _, _), TargetPosition) :-
+    CalculatedWidth is Width * WidthPercentage,
+    CalculatedHeight is Height * HeightPercentage,
+    middle(BallPosition, vector(CalculatedWidth, CalculatedHeight), TargetPosition).
+
+/* Kick action utils */
+
+kickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), Action) :-
+    GoalHeight is Height/2,
+    Action = action(kick, vector(Width,GoalHeight), 1).
+
+agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
+    distance(FirstPosition, SecondPosition, Distance).
+
+bestPassTarget(Agent, OtherAgents, BestPassTarget, Distance) :-
+    Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
+    exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
+    include(agentInTeam(0), NonGoalKeepers, Allies),
+    findall(Distance-Score-A, (
+        member(A, Allies), A = agent(_, _, vector(AX, _), _, _, _, _),
+        agentDistance(A, Agent, Distance),
+        Score is (AX - AgentPositionX) - Distance
+    ), Pairs),
+
+    max_member(Distance-_Score-BestPassTarget, Pairs).
