@@ -337,8 +337,6 @@ moveToBall(adaptive(Agent), Ball, AgentSettings, Action) :- (
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     distanceToBall(Agent, Ball, DistanceToBall),
     DashReach is KickReach * 6,
-    writeln(DashReach),
-    writeln(DistanceToBall),
     DistanceToBall < DashReach ->
         moveToBall(dash, Ball, AgentSettings, Action);
 
