@@ -23,17 +23,15 @@ export default class Camera {
     team1Color: string = "red";
     goalWidth: number = 25;
 
-    agentInformationMargin: number = 2;
+    agentTextMargin: number = 2;
 
     font: string = "arial";
     fontSize: number = 12;
     textColor: string = "white";
 
     energyBarColor: string = "lime";
-    energyBarHeight: number = 8;
-    energyBarOutlineThickness: number = 1;
-    //the energy bar's width will be energyBarRelativeWidthFactor times the radius of the agent 
-    energyBarRelativeWidthFactor: number = 5;
+    energyBarMargin: number = 1;
+    energyBarThickness: number = 2;
 
     rendering: {
         energyBar: boolean,
@@ -175,24 +173,35 @@ export default class Camera {
         context.closePath();
         context.fill();
 
+        //draw energy bar
+        if(this.rendering.energyBar){
+            // const energyBarFullWidth = this.energyBarRelativeWidthFactor * agentRadius * this.zoom;
+            // const energyFraction = agent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
+            // const energyBarWidth = energyBarFullWidth * energyFraction;
+
+            // context.fillStyle = this.energyBarColor;
+            // context.strokeStyle = "white";
+            // context.lineWidth = this.energyBarOutlineThickness * this.zoom;
+            // context.fillRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarWidth, this.energyBarHeight * this.zoom)
+            // context.strokeRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarFullWidth, this.energyBarHeight * this.zoom);
+        
+            const energyFraction = agent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
+            const radius = (agentRadius + this.energyBarMargin + this.energyBarThickness / 2) * this.zoom;
+            context.strokeStyle = this.energyBarColor;
+            context.lineWidth = this.energyBarThickness * this.zoom;
+            
+            context.beginPath();
+            if(energyFraction == 1) context.arc(position.x, position.y, radius,0, 2 * Math.PI);
+            else context.arc(position.x, position.y, radius, -Math.PI / 2, (-Math.PI / 2) + 2 * Math.PI * (1 - energyFraction), true);
+            context.stroke();
+            context.closePath();
+        }
+
         //draw text
         if(this.rendering.agentNameAndRole){
             context.fillStyle = this.textColor;
-            context.fillText(`Role: ${agent.role}`, position.x, position.y - (agentRadius + this.agentInformationMargin) * this.zoom);
-            context.fillText(`Name: ${agent.name}`, position.x, position.y - (agentRadius + this.fontSize + this.agentInformationMargin) * this.zoom);
-        }
-
-        //draw energy bar
-        if(this.rendering.energyBar){
-            const energyBarFullWidth = this.energyBarRelativeWidthFactor * agentRadius * this.zoom;
-            const energyFraction = agent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
-            const energyBarWidth = energyBarFullWidth * energyFraction;
-
-            context.fillStyle = this.energyBarColor;
-            context.strokeStyle = "white";
-            context.lineWidth = this.energyBarOutlineThickness * this.zoom;
-            context.fillRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarWidth, this.energyBarHeight * this.zoom)
-            context.strokeRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarFullWidth, this.energyBarHeight * this.zoom);
+            context.fillText(`Role: ${agent.role}`, position.x, position.y - (agentRadius + this.agentTextMargin) * this.zoom);
+            context.fillText(`Name: ${agent.name}`, position.x, position.y - (agentRadius + this.fontSize + this.agentTextMargin) * this.zoom);
         }
         }
 
