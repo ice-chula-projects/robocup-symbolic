@@ -5,21 +5,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/png" href="favicon.png">
-    <title>Robocup Visualization</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <title>Robocup Visualizer</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+    <h1>Robocup Visualizer</h1>
     <div class="components-container">
         <div class="ux-container">
-            <input type="file" id="gameLogFileInput">
-            <br>
-            <button class="ux-component" id="loadButton">load</button>
+            <label class="file-upload">
+            <input type="file" id="gameLogFileInput">Choose File (.json)</label>
+            <span id="fileName">No file selected</span>
+            <button class="ux-component" id="loadButton">Load</button>
+            <hr>
+
+            <span>Visualizer Options:</span>
+            <div class="checkbox-group">
+                <label><input type="checkbox" id="toggleName" checked> Name</label>
+                <label><input type="checkbox" id="toggleEnergy" checked> Energy</label>
+                <label><input type="checkbox" id="toggleRole" checked> Role</label>
+            </div>
+            <div class="team-color-group">
+                <label for="teamAColor">Team A</label>
+                <input type="color" id="teamAColor" value="#ff0000">
+                <label for="teamBColor">Team B</label>
+                <input type="color" id="teamBColor" value="#0000ff">
+            </div>
+
+            <span>Playback Controls:</span>
+            <button class="playback" id="playPause">Play/Pause</button>
+            <label for="speedSlider">
+            Speed: <span id="speedValue">1x</span>
+            </label>
+            <input type="range" id="speedSlider" min="0.20" max="5" step="0.20" value="1">
         </div>
+
         <div class="canvas-container">
             <canvas class="canvas" id="canvas"></canvas>
         </div>
     </div>
 </body>
+
 <script type="module" src="./src/js/index.js"></script>
+
 </html>
