@@ -1,6 +1,13 @@
+import Color from "./Color.js";
 import KeyboardInput from "./KeyboardInput.js";
 import Vector2D from "./lib/Vector2D.js"
-import Playback, { Agent, AgentProcessed, GameStateProcessed } from "./Playback.js";
+import Playback, { Agent, AgentProcessed, BallProcessed, GameStateProcessed } from "./Playback.js";
+
+export enum CameraFollowTarget {
+    none,
+    ball,
+    agent
+}
 
 export default class Camera {
     canvas: HTMLCanvasElement;
@@ -17,10 +24,16 @@ export default class Camera {
 
     ballRadius: number = 5;
     ballColor: string = "white";
+    ballVelocityLineScale: number = 5;
+    ballVelocityLineColor: string = "red";
+
+    
     borderWidth: number = 3;
     borderColor: string = "white";
+
     team0Color: string = "blue";
     team1Color: string = "red";
+
     goalWidth: number = 25;
 
     agentTextMargin: number = 2;
@@ -29,17 +42,37 @@ export default class Camera {
     fontSize: number = 12;
     textColor: string = "white";
 
+    // agentVelocityFastThreshold: number = 5;
+    // agentVelocityLineLength: number = 20;
+    // agentVelocityLineSlowColor: string = "green";
+    // agentVelocityLineFastColor: string = "red";
+
+    agentVelocityLineScale: number = 5;
+    agentVelocityLineColor: string = "white";
+
     energyBarColor: string = "lime";
+    energyBarPersistance: number = 32;
+    energyBarDepletedColor: string = "red";
     energyBarMargin: number = 1;
     energyBarThickness: number = 2;
 
+    // how far away something can be (+ it's radius) to still be considered when selecting follow target
+    followMargin: number = 5;
+    followTarget: CameraFollowTarget = CameraFollowTarget.none;
+    followedAgentId: number;
+    followTextSize: number = 30;
+
     rendering: {
         energyBar: boolean,
-        agentNameAndRole: boolean
+        agentNameAndRole: boolean,
+        ballVelocityLine: boolean,
+        agentVelocityLine: boolean
     } = {
-        energyBar: true,
-        agentNameAndRole: true
-    }
+            energyBar: true,
+            agentNameAndRole: true,
+            ballVelocityLine: true,
+            agentVelocityLine: true
+        }
 
     lastMouseData: {
         x: number | null
@@ -69,12 +102,13 @@ export default class Camera {
         this.canvas = canvas;
         this.canvas.width = this.canvas.clientWidth;
         this.canvas.height = this.canvas.clientHeight;
-        
+
         this.playback = playback;
 
         window.addEventListener("wheel", this.handleScroll.bind(this))
         window.addEventListener("mousemove", this.handleMouseDrag.bind(this))
-
+        window.addEventListener("mousedown", this.handleMouseMiddleClick.bind(this))
+        
         window.addEventListener("resize", () => {
             this.canvas.width = this.canvas.clientWidth;
             this.canvas.height = this.canvas.clientHeight;
@@ -96,18 +130,31 @@ export default class Camera {
     }
 
     update() {
-        this.handleInput()
-
-        this.clear();
-        this.render();
-    }
-
-    render() {
         const gameState: GameStateProcessed = this.playback.getCurrentState();
         if (gameState == null) return;
+
+        this.handleInput()
+        if (this.followTarget != CameraFollowTarget.none) this.updateFollow(gameState);
+        this.render(gameState);
+    }
+
+    updateFollow(gameState: GameStateProcessed): void {
+        switch (this.followTarget) {
+            case CameraFollowTarget.ball:
+                this.position = gameState.ball.position.copy();
+                break;
+            case CameraFollowTarget.agent:
+                this.position = gameState.agents[this.followedAgentId].position.copy();
+                break;
+        }
+    }
+
+    render(gameState: GameStateProcessed) {
+        this.clear();
         this.drawField();
         this.drawBall(gameState);
         this.drawAgents(gameState);
+        this.drawText(gameState);
     }
 
     drawField() {
@@ -128,39 +175,51 @@ export default class Camera {
         //value to nudge the by so that the ball appears to bounce when it's edge hits instead of it's center
         const nudge = this.ballRadius * this.zoom;
         context.beginPath();
-        context.rect(topLeft.x - nudge, topLeft.y - nudge, fieldDimensions.width * this.zoom + 2 * nudge,  fieldDimensions.height * this.zoom + 2 * nudge);
+        context.rect(topLeft.x - nudge, topLeft.y - nudge, fieldDimensions.width * this.zoom + 2 * nudge, fieldDimensions.height * this.zoom + 2 * nudge);
         context.closePath();
         context.stroke();
 
         //draw goals
         const goalHeight = this.playback.currentGameLog.fieldSettings.goalSize * fieldDimensions.height;
-        const team0GoalTopLeft = this.project(new Vector2D(-this.goalWidth, -goalHeight/2 + fieldDimensions.height/2))
-        const team1GoalTopLeft = this.project(new Vector2D(fieldDimensions.width, -goalHeight/2 + fieldDimensions.height/2))
+        const team0GoalTopLeft = this.project(new Vector2D(-this.goalWidth, -goalHeight / 2 + fieldDimensions.height / 2))
+        const team1GoalTopLeft = this.project(new Vector2D(fieldDimensions.width, -goalHeight / 2 + fieldDimensions.height / 2))
         context.beginPath();
         context.rect(team0GoalTopLeft.x, team0GoalTopLeft.y, this.goalWidth * this.zoom - nudge, goalHeight * this.zoom);
         context.rect(team1GoalTopLeft.x + nudge, team1GoalTopLeft.y, this.goalWidth * this.zoom, goalHeight * this.zoom);
         context.closePath();
 
         context.fill();
-    
+
     }
 
     drawBall(gameState: GameStateProcessed) {
         const context = this.canvas.getContext("2d");
         const position = this.project(gameState.ball.position);
-
+        
         context.fillStyle = this.ballColor;
         context.beginPath();
         context.arc(position.x, position.y, this.ballRadius * this.zoom, 0, 2 * Math.PI);
         context.closePath();
         context.fill();
+        
+        //ball velocity line
+        if(this.rendering.ballVelocityLine){
+            const predictedPosition = this.project(gameState.ball.position.add(gameState.ball.velocity.scale(this.ballVelocityLineScale)));
+            context.strokeStyle = this.ballVelocityLineColor;
+
+            context.beginPath();
+            context.moveTo(position.x, position.y);
+            context.lineTo(predictedPosition.x, predictedPosition.y);
+            context.closePath();
+            context.stroke();
+        }
     }
 
-    drawAgent(agent: AgentProcessed){
+    drawAgent(agent: AgentProcessed) {
         const context = this.canvas.getContext("2d");
         let agentRadius = this.playback.currentGameLog.agentSettings.agentRadius;
         //backwards compatability
-        if(agentRadius == null) agentRadius = 10;
+        if (agentRadius == null) agentRadius = 10;
 
         context.fillStyle = agent.team == 0 ? this.team0Color : this.team1Color;
         context.font = `${Math.round(this.fontSize * this.zoom)}px ${this.font}`;
@@ -173,8 +232,24 @@ export default class Camera {
         context.closePath();
         context.fill();
 
+        if (this.rendering.agentVelocityLine) {
+            const nextAgent = this.playback.getRelativeState(1).agents[agent.id];
+            const velocity = nextAgent.position.sub(agent.position);
+            // const predictedPosition = this.project(agent.position.add(velocity.normalize().scale(this.agentVelocityLineLength)));
+            // context.strokeStyle = Color.lerp(Color.fromCssString(this.agentVelocityLineSlowColor), Color.fromCssString(this.agentVelocityLineFastColor), velocity.length / this.agentVelocityFastThreshold).toCssString();
+            
+            const predictedPosition = this.project(agent.position.add(velocity.scale(this.agentVelocityLineScale)));
+            context.strokeStyle = this.agentVelocityLineColor;
+
+            context.beginPath();
+            context.moveTo(position.x, position.y);
+            context.lineTo(predictedPosition.x, predictedPosition.y);
+            context.closePath();
+            context.stroke();
+        }
+
         //draw energy bar
-        if(this.rendering.energyBar){
+        if (this.rendering.energyBar) {
             // const energyBarFullWidth = this.energyBarRelativeWidthFactor * agentRadius * this.zoom;
             // const energyFraction = agent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
             // const energyBarWidth = energyBarFullWidth * energyFraction;
@@ -184,29 +259,51 @@ export default class Camera {
             // context.lineWidth = this.energyBarOutlineThickness * this.zoom;
             // context.fillRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarWidth, this.energyBarHeight * this.zoom)
             // context.strokeRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarFullWidth, this.energyBarHeight * this.zoom);
-        
+
+            const previousAgent = this.playback.getRelativeState(-this.energyBarPersistance).agents[agent.id];
+
             const energyFraction = agent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
+            const previousEnergyFraction = previousAgent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
             const radius = (agentRadius + this.energyBarMargin + this.energyBarThickness / 2) * this.zoom;
-            context.strokeStyle = this.energyBarColor;
             context.lineWidth = this.energyBarThickness * this.zoom;
-            
+
+            context.strokeStyle = this.energyBarDepletedColor;
             context.beginPath();
-            if(energyFraction == 1) context.arc(position.x, position.y, radius,0, 2 * Math.PI);
+            if (previousEnergyFraction == 1) context.arc(position.x, position.y, radius, 0, 2 * Math.PI);
+            else context.arc(position.x, position.y, radius, -Math.PI / 2, (-Math.PI / 2) + 2 * Math.PI * (1 - previousEnergyFraction), true);
+            context.stroke();
+            context.closePath();
+
+            context.strokeStyle = this.energyBarColor;
+            context.beginPath();
+            if (energyFraction == 1) context.arc(position.x, position.y, radius, 0, 2 * Math.PI);
             else context.arc(position.x, position.y, radius, -Math.PI / 2, (-Math.PI / 2) + 2 * Math.PI * (1 - energyFraction), true);
             context.stroke();
             context.closePath();
         }
 
         //draw text
-        if(this.rendering.agentNameAndRole){
+        if (this.rendering.agentNameAndRole) {
             context.fillStyle = this.textColor;
             context.fillText(`Role: ${agent.role}`, position.x, position.y - (agentRadius + this.agentTextMargin) * this.zoom);
             context.fillText(`Name: ${agent.name}`, position.x, position.y - (agentRadius + this.fontSize + this.agentTextMargin) * this.zoom);
         }
-        }
+    }
 
-    drawAgents(gameState: GameStateProcessed){
-        for (const agent of gameState.agents){
+    drawText(gameState: GameStateProcessed): void{
+        const context = this.canvas.getContext("2d");
+
+        if(this.followTarget != CameraFollowTarget.none){
+            const name = this.followTarget == CameraFollowTarget.ball? "Ball" : gameState.agents[this.followedAgentId].name;
+            context.font = `${this.followTextSize}px ${this.font}`;
+            context.fillStyle = this.textColor;
+            context.textAlign = "left";
+            context.fillText(`Currently Following: ${name}`, 0, this.canvas.height - this.fontSize)
+        }
+    }
+
+    drawAgents(gameState: GameStateProcessed) {
+        for (const agent of gameState.agents) {
             this.drawAgent(agent);
         }
     }
@@ -255,8 +352,48 @@ export default class Camera {
         }
     }
 
+     handleMouseMiddleClick(e: MouseEvent): void{
+        if(e.target != this.canvas || e.buttons != 4) return;
+        if(this.followTarget != CameraFollowTarget.none){
+            this.followTarget = CameraFollowTarget.none;
+            this.followedAgentId = null;
+            return;
+        }
+
+        const position = this.mouseCoordinatesToWorldCoordinates(new Vector2D(e.x, e.y))
+        
+        const gameState = this.playback.getCurrentState();
+        
+        //ball checking
+        if(Vector2D.getDistance(position, gameState.ball.position) <= this.ballRadius + this.followMargin) this.followTarget = CameraFollowTarget.ball;
+
+        //agents
+        for(const agent of gameState.agents){
+            if(Vector2D.getDistance(position,agent.position) <= this.playback.currentGameLog.agentSettings.agentRadius + this.followMargin){
+                this.followTarget = CameraFollowTarget.agent;
+                this.followedAgentId = agent.id;
+                break; 
+            }
+        }
+    }
+
+    mouseCoordinatesToWorldCoordinates(mouseCoordinates: Vector2D) {
+        let bounding = this.canvas.getBoundingClientRect();
+        let offsetVector = new Vector2D(bounding.left,bounding.top);
+
+        //convert screen coordinates into canvas coordinates
+        let projectedCoordinates = mouseCoordinates.sub(offsetVector);
+
+        return this.reverseProject(projectedCoordinates)
+    }
+
+
     project(position: Vector2D): Vector2D {
-        return position.sub(this.position).scale(this.zoom).add(new Vector2D(this.canvas.width/2, this.canvas.height/2));
+        return position.sub(this.position).scale(this.zoom).add(new Vector2D(this.canvas.width / 2, this.canvas.height / 2));
+    }
+
+    reverseProject(position: Vector2D): Vector2D {
+        return position.sub(new Vector2D(this.canvas.width / 2, this.canvas.height / 2)).scale(1/this.zoom).add(this.position);
     }
 
     clear(): void {

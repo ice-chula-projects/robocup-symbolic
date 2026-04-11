@@ -22,7 +22,6 @@ export type AgentSettings = {
         kickReach: number,
         kickMaxStrength: number,
         kickMaxEnergy: number,
-    
     },
     runSettings: {
         runMaxDistance: number,
@@ -72,10 +71,7 @@ export type Agent = {
 }
 
 export type GameStateProcessed = {
-    ball: {
-        position: Vector2D,
-        velocity: Vector2D
-    },
+    ball: BallProcessed,
     agents: AgentProcessed[],
     round: number,
     score: {
@@ -89,7 +85,13 @@ export type AgentProcessed = {
     role: string,
     position: Vector2D,
     energy: number,
-    team: number
+    team: number,
+    id: number
+}
+
+export type BallProcessed = {
+    position: Vector2D,
+    velocity: Vector2D
 }
 
 export default class Playback {
@@ -154,17 +156,21 @@ export default class Playback {
         if (this.currentStateIndex >= this.gameLength) this.currentStateIndex = 0;
     }
 
-    getCurrentState(): GameStateProcessed {
-        if (!this.#loaded) return this.#lastGameStateProcessed;
-        const gameState = this.currentGameLog.gameStates[this.currentStateIndex];
-
-        const agentsProcessed: AgentProcessed[] = gameState.agents.map(agent => ({
-            ...agent,
-            position: new Vector2D(agent.position.x, agent.position.y)
-        }))
+    processGameState(gameState: GameState): GameStateProcessed{
+        const agents = gameState.agents;
+        const agentsProcessed: AgentProcessed[] = [];
+        
+        for(let i = 0; i < agents.length; i++) {
+            const agent = agents[i];
+            agentsProcessed.push({
+                ...agent,
+                position: new Vector2D(agent.position.x, agent.position.y),
+                id: i
+            })
+        }
 
         const ball = gameState.ball;
-        const GameStateProcessed = {
+        return {
             ...gameState,
             ball: {
                 position: new Vector2D(ball.position.x, ball.position.y),
@@ -172,6 +178,23 @@ export default class Playback {
             },
             agents: agentsProcessed
         }
+    }
+
+    //returns a gamestate n steps ahead/behind the current state
+    getRelativeState(n: number): GameStateProcessed{
+        if (!this.#loaded) return this.#lastGameStateProcessed;
+        let index = this.currentStateIndex + n;
+        if (index < 0) index = 0;
+        if (index >= this.gameLength) index = this.gameLength - 1;
+
+        const gameState = this.currentGameLog.gameStates[index];
+        return this.processGameState(gameState);
+    }
+
+    getCurrentState(): GameStateProcessed {
+        if (!this.#loaded) return this.#lastGameStateProcessed;
+        const gameState = this.currentGameLog.gameStates[this.currentStateIndex];
+        const GameStateProcessed = this.processGameState(gameState);
 
         this.#lastGameStateProcessed = GameStateProcessed;
         return GameStateProcessed;
