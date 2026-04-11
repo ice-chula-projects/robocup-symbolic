@@ -40,7 +40,7 @@ export default class Camera {
     energyBarMargin = 1;
     energyBarThickness = 2;
     // how far away something can be (+ it's radius) to still be considered when selecting follow target
-    followMargin = 5;
+    followMargin = 50;
     followTarget = CameraFollowTarget.none;
     followedAgentId;
     followTextSize = 30;
