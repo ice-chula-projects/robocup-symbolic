@@ -85,7 +85,7 @@ runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, gameState(_, _, 
 runSimulation(InitialState, [NextGameState | GameStates], Time, TimeLimit) :-
     step(InitialState, NextState),
     NextState = state(_, _, NextGameState),
-    NextTime is Time + 1;
+    NextTime is Time + 1,
     runSimulation(NextState, GameStates, NextTime, TimeLimit).
 
 exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunMaxEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation), AgentRadius), GameStates) :-
