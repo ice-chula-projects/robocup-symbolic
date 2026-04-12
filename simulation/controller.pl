@@ -75,35 +75,18 @@ control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents
 /* STRIKERS
 
 'striker' refers to the AI used for the 'Striker' role. They are the biggest threat on the field,
-attempting to score a goal around the center area. 
+attempting to score a goal around the center area. However, if they find themselves in the middle
+(e.g. the start of the game), they would instead pass the ball because at that point, if they shot
+at the goal it would just keep deflecting each other.
+When their energy is high enough after resting, they will move to a designated area around the center.
 If they are nearest to the ball, they will attempt to pursue it.
 */
 control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
-    canKick(AgentSettings, Agent, Ball, 1) -> 
-        kickToGoal(FieldSettings, Action);
-
-    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
-        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
- 
-    anchorAt(4/5, 1/2, Ball, FieldSettings, TargetPosition),
-    moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
-).
-
-/* MIDFIELDERS
-
-Midfielders stay in the middle of the field, their priority is to send the ball
-they recieve from defenders forward to the attackers. They don't naturally
-score goals. (TODO: Current midfield AI is getting very striker-like)
-
-There is only one midfielder controller, aptly named 'midfield' for the "Central Midfield" role.
-(TODO: Instead of 1 midfield, make that two)
-*/
-control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
         Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
         FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
         AgentPositionXRelative is AgentPositionX / Width,
-        (closestDistanceToGoal([Agent | OtherAgents], Agent), AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/) -> (
+        (closestDistanceToGoal([Agent | OtherAgents], Agent), AgentPositionXRelative > 0.65 /* Guard them from shooting at each other*/) -> (
             kickToGoal(FieldSettings, Action)
         );
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
@@ -121,12 +104,34 @@ control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, 
     AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
     EnergyThreshold is MaxEnergy * 0.98,
 
-    relativeToAbsolute(vector(2/3, 1/2), FieldSettings, DesignatedSpot),
+    relativeToAbsolute(vector(3/4, 1/2), FieldSettings, DesignatedSpot),
     (Energy >= EnergyThreshold , \+ isDistanceInReach(3.0, AgentSettings, Agent, DesignatedSpot)) -> (  % Go to designated spot if there's nothing to do
         moveToPosition(movement(sustainable), DesignatedSpot, AgentSettings, Action)
     );
     
     Action = action(rest)
+).
+
+/* MIDFIELDERS
+
+Midfielders stay in the middle of the field, their priority is to send the ball
+they recieve from defenders forward to the attackers. They don't naturally
+score goals.
+
+There is only one midfielder controller, aptly named 'midfield' for the "Central Midfield" role.
+(TODO: Instead of 1 midfield, make that two. The roles will become "Top/Bottom Midfield" leaving room
+for the striker to be the one in the middle)
+*/
+control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        Action = action(kick, BestPassTargetPosition, 0.5);
+
+    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
+        moveToBall(adaptive, Agent, Ball, AgentSettings, Action);
+
+    anchorAt(3/5, 1/2, Ball, FieldSettings, TargetPosition),
+    moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
 ).
 
 
