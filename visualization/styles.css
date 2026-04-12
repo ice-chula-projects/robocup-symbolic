@@ -26,6 +26,11 @@ h2 {
     text-shadow: 1px 1px grey;
 }
 
+p {
+    font-size: 15.67px;
+    line-height: 0.676767;
+}
+
 .components-container {
     margin-top: 15px;
     width: 100%;
