@@ -139,11 +139,10 @@ control(controller(blocker /*TODO: change blocker to back*/), FieldSettings, Age
 
     Agent = agent(_, _, CurrentPosition, _, _, _, _),
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
-    predictBallPosition(Agent, Ball, PredictedBallPosition),
+    predictBallPosition(FieldSettings, Agent, Ball, PredictedBallPosition),
     distance(CurrentPosition, PredictedBallPosition, DistanceToPredictedPosition),
-    chooseDestination(Agent, Ball, FieldSettings, PredictedBallPosition, TargetPosition),
     DistanceToPredictedPosition > KickReach ->
-        moveToPosition(TargetPosition, AgentSettings, Action);
+        moveToPosition(PredictedBallPosition, AgentSettings, Action);
     
     Action = action(rest)
 ).
@@ -225,26 +224,35 @@ agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
 isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
 
 /* Move action utils */
-% Uses a perpendicular line intersecting the ball's trajectory and the agent's position
+% Uses a dot product projection to intersect the ball's trajectory with the agent's position
 predictBallPosition(
-    agent(_, _, vector(AgentPositionX, AgentPositionY), _, _, _, _),
-    ball(vector(BallPositionX, BallPositionY), vector(BallVelocityX, BallVelocityY)),
-    /* returns */ PredictedBallPosition
+    FieldSettings,
+    agent(_, _, AgentPosition, _, _, HomePositionRelative, _),
+    ball(BallPosition, BallVelocity),
+    PredictedBallPosition
 ) :- (
-    ((BallVelocityX =:= 0) ; (BallVelocityY =:= 0) ; ((BallVelocityY / BallVelocityX)**2 + 1 =:= 0)) -> 
-        PredictedBallPosition = vector(AgentPositionX, AgentPositionY);
+    magnitude(BallVelocity, BallVelocityMagnitude), BallVelocityMagnitude =:= 0 -> (
+        relativeToAbsolute(HomePositionRelative, FieldSettings, HomePosition),
+        PredictedBallPosition = HomePosition
+    );
 
-    % Ball movement linear equation:
-    % BallPositionY = M * BallPositionX + C
-    M is BallVelocityY / BallVelocityX,
-    C is BallPositionY - (M * (BallPositionX)),
+    sub(AgentPosition, BallPosition, DistanceVector),
+    normalize(BallVelocity, NormalizedBallVelocity),
+    dot(NormalizedBallVelocity, DistanceVector, DotProduct),
 
-    % Line perpendicular to slope intersecting the Agent:
-    % Y = -(1/M) * X + (AgentPositionY + (1/M) * AgentPositionX)
-    PerpendicularConstant = (AgentPositionY + (AgentPositionX / M)),
-    X is M * (PerpendicularConstant - C) / ((M*M) + 1),
-    Y is M * X + C,
-    PredictedBallPosition = vector(X, Y)
+    % Ball is moving towards player
+    DotProduct > 0 -> (
+        /*
+        PredictedBallPosition = BallPosition + \
+        NormalizedBallVelocity * dot(NormalizedBallVelocity, DistanceVector)
+        */
+        scale(NormalizedBallVelocity, DotProduct, ScaledVelocity),
+        add(BallPosition, ScaledVelocity, PredictedBallPosition)
+    );
+
+    % Ball is moving away from player
+    relativeToAbsolute(HomePositionRelative, FieldSettings, HomePosition),
+    PredictedBallPosition = HomePosition
 ).
 
 findYIntercept(
