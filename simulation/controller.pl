@@ -381,3 +381,28 @@ bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
     ), Pairs),
 
     max_member(_Score-BestPassTarget, Pairs).
+
+  % added content here
+timeCalculator(BallVelocity, PreviousPosition, TargetPosition, Time) :-
+    distance(PreviousPosition, TargetPosition, Distance),
+    magnitude(BallVelocity, BallSpeed),
+    BallSpeed > 0,
+    Time is Distance / BallSpeed.
+
+ballPrediction(Ball, TargetPosition, PredictedPosition) :-
+    Ball = ball(BallPosition, BallVelocity),
+    timeCalculator(BallVelocity, BallPosition, TargetPosition, TimeA),
+    scale(BallVelocity, TimeA, ScaledDistanceA),
+    sub(TargetPosition, ScaledDistanceA, TempPredictedPosition),
+
+    timeCalculator(BallVelocity, BallPosition, TempPredictedPosition, TimeB),
+    scale(BallVelocity, TimeB, ScaledDistanceB),
+    add(TargetPosition, ScaledDistanceB, PredictedPosition).
+    
+
+kickToPosition(Ball, TargetPosition, Action) :-
+    % use best past target to kick towards
+    % kick while the wall is moving 
+    % calculate by pretending the target is moving at the same speed as the ball and finding the intercept point
+    ballPrediction(Ball, TargetPosition, LeadPosition),
+    Action = action(kick, LeadPosition, 1).
