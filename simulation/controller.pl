@@ -54,7 +54,7 @@ control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, B
         kickToGoal(FieldSettings, Action);
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
-        moveToBall(movement(adaptive(Agent)), Ball, AgentSettings, Action);
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     anchorAt(3/4, 0, Ball, FieldSettings, TargetPosition),
     moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
@@ -66,7 +66,7 @@ control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents
         kickToGoal(FieldSettings, Action);
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
-        moveToBall(movement(adaptive(Agent)), Ball, AgentSettings, Action);
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
  
     anchorAt(3/4, 1, Ball, FieldSettings, TargetPosition),
     moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
@@ -83,7 +83,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
         kickToGoal(FieldSettings, Action);
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
-        moveToBall(movement(adaptive(Agent)), Ball, AgentSettings, Action);
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
  
     anchorAt(4/5, 1/2, Ball, FieldSettings, TargetPosition),
     moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
@@ -98,17 +98,26 @@ score goals.
 There is only one midfielder controller, aptly named 'midfield' for the "Central Midfield" role.
 (TODO: Instead of 1 midfield, make that two)
 */
-control(controller(midfield), _FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
         Action = action(kick, BestPassTargetPosition, 0.5);
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
-        moveToBall(movement(adaptive(Agent)), Ball, AgentSettings, Action);
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     predictBallPosition(fallbackPosition(current), Agent, Ball, PredictedBallPosition),
     isDistanceInReach(kickReachMultiplier(1.0), AgentSettings, Agent, PredictedBallPosition) ->
-        moveToPosition(movement(adaptive(Agent)), PredictedBallPosition, AgentSettings, Action);
+        moveToPosition(movement(adaptive), Agent, PredictedBallPosition, AgentSettings, Action);
+
+    Agent = agent(_, _, _, Energy, _, _, _),
+    AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
+    EnergyThreshold is MaxEnergy * 0.98,
+
+    relativeToAbsolute(vector(2/3, 1/2), FieldSettings, DesignatedSpot),
+    (Energy >= EnergyThreshold , \+ isDistanceInReach(3.0, AgentSettings, Agent, DesignatedSpot)) -> (  % Go to designated spot if there's nothing to do
+        moveToPosition(movement(sustainable), DesignatedSpot, AgentSettings, Action)
+    );
     
     Action = action(rest)
 ).
@@ -138,7 +147,7 @@ control(controller(blocker /*TODO: change blocker to back*/), FieldSettings, Age
     ;
     
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
-        moveToBall(movement(adaptive(Agent)), Ball, AgentSettings, Action);
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     predictBallPosition(fallbackPosition(home(FieldSettings)), Agent, Ball, PredictedBallPosition),
     isDistanceInReach(kickReachMultiplier(1.0), AgentSettings, Agent, PredictedBallPosition) ->
@@ -166,7 +175,7 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
 
     % If the ball is REALLY close, the goalkeeper can nudge it
     (\+ isDistanceInReach(kickReachMultiplier(3), AgentSettings, Agent, Ball)) ->
-        moveToBall(movement(instant), Ball, AgentSettings, Action);
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     % Immediately move back if the ball isn't in reach anymore
     Agent = agent(_, _, vector(AgentPositionX, AgentPositionY), _, _, _, _),
@@ -345,6 +354,25 @@ isDistanceInReach(
 isDistanceInReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, ball(BallPosition, _)) :-
     isDistanceInReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, BallPosition).
 
+isBallMovingTowardsAgent(
+    agent(_, _, AgentPosition, _, _, _, _),
+    ball(BallPosition, BallVelocity)
+) :- (
+    (magnitude(BallVelocity, BallVelocityMagnitude), BallVelocityMagnitude =:= 0) -> (
+        false
+    );
+    
+    sub(AgentPosition, BallPosition, DistanceVector),
+    (magnitude(DistanceVector, DistanceVectorMagnitude), DistanceVectorMagnitude =\= 0) -> (
+        normalize(BallVelocity, NormalizedBallVelocity),
+        normalize(DistanceVector, NormalizedDistanceVector),
+        dot(NormalizedBallVelocity, NormalizedDistanceVector, CosineTheta),
+        CosineTheta < 0.9986  % cos(177°), 3° margin
+    );
+
+    false
+).
+
 % Finds the movement factor that allows the agent to move using the same energy as it decays
 sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
     AgentSettings = agentSettings(_, runSettings(RunMaxDistance, _), energySettings(_, EnergyRegenerationPerTick), _, _),
@@ -354,13 +382,13 @@ sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
 movement(sustainable).
 movement(dash).
 movement(instant).
-movement(adaptive(agent(_, _, _, _, _, _, _))).
+movement(adaptive).
 
 movementFactorMultiplier(sustainable, 1.0).
 movementFactorMultiplier(dash, 2.0).
 movementFactorMultiplier(instant, 4.0).
 
-moveToPosition(movement(adaptive(agent(_, _, _, Energy, _, _, _))), TargetPosition, AgentSettings, Action) :- (
+moveToPosition(movement(adaptive), agent(_, _, _, Energy, _, _, _), TargetPosition, AgentSettings, Action) :- (
     AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
     EnergyThreshold is MaxEnergy * 3 / 5,
     Energy < EnergyThreshold ->
@@ -370,7 +398,7 @@ moveToPosition(movement(adaptive(agent(_, _, _, Energy, _, _, _))), TargetPositi
 ).
 
 moveToPosition(movement(MovementType), TargetPosition, AgentSettings, Action) :-
-    MovementType \= adaptive(_Agent),
+    MovementType \= adaptive,
     sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
     movementFactorMultiplier(MovementType, Multiplier),
     MovementFactor is SustainableMovementFactor * Multiplier,
@@ -378,24 +406,29 @@ moveToPosition(movement(MovementType), TargetPosition, AgentSettings, Action) :-
     Action = action(move, TargetPosition, ClampedMovementFactor).
 
 % Moving to the ball uses a different algorithm that dashes when close to the ball.
-moveToBall(movement(adaptive(Agent)), Ball, AgentSettings, Action) :- (
+moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action) :- (
     AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
     Agent = agent(_, _, _, Energy, _, _, _),
     EnergyThreshold is MaxEnergy * 2 / 5,
     Energy < EnergyThreshold ->
-        moveToBall(movement(sustainable), Ball, AgentSettings, Action);
+        moveToBall(movement(sustainable), Agent, Ball, AgentSettings, Action);
 
     AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     distanceToBall(Agent, Ball, DistanceToBall),
     DashReach is KickReach * 6,
     DistanceToBall < DashReach ->
-        moveToBall(movement(dash), Ball, AgentSettings, Action);
+        moveToBall(movement(dash), Agent, Ball, AgentSettings, Action);
 
-    moveToBall(movement(sustainable), Ball, AgentSettings, Action)
+    moveToBall(movement(sustainable), Agent, Ball, AgentSettings, Action)
 ).
 
-moveToBall(movement(MovementType), Ball, AgentSettings, Action) :-
-    MovementType \= adaptive(_Agent),
+moveToBall(movement(MovementType), Agent, Ball, AgentSettings, Action) :-
+    MovementType \= adaptive,
+    isBallMovingTowardsAgent(Agent, Ball) -> (
+        Ball = ball(BallPosition, _),
+        moveToPosition(movement(MovementType), BallPosition, AgentSettings, Action)
+    );
+
     naiveFutureBallPosition(Ball, PredictedBallPosition),
     moveToPosition(movement(MovementType), PredictedBallPosition, AgentSettings, Action).
 
