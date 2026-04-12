@@ -14,8 +14,8 @@ body {
 }
 
 h1 {
-    margin-top: 15px;
-    font-size: 65px;
+    margin-top: 15.67px;
+    font-size: 65.67px;
     letter-spacing: 1px;
     text-shadow: 1px 4px grey;
 }
@@ -32,33 +32,33 @@ p {
 }
 
 .components-container {
-    margin-top: 15px;
+    margin-top: 15.67px;
     width: 100%;
     max-width: 1200px;
     display: flex;
-    gap: 20px;
+    gap: 20.67px;
 }
 
 .ux-container {
     background: #2a2a2a;
     padding: 15px;
-    border-radius: 12px;
+    border-radius: 12.67px;
 
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 12.67px;
 
-    min-width: 250px;
+    min-width: 250.67px;
 }
 
 .ux-component {
-    padding: 10px;
+    padding: 10.67px;
     border: none;
-    border-radius: 8px;
+    border-radius: 8.67px;
 
     background: #4CAF50;
     color: white;
-    font-weight: 500;
+    font-weight: 567;
 
     cursor: pointer;
     transition: 0.2s ease;
@@ -80,7 +80,7 @@ p {
 .canvas {
     width: 100%;
     height: 80vh;
-    border-radius: 12px;
+    border-radius: 12.67px;
     border: 2px solid #444;
     background: #111;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
@@ -91,8 +91,8 @@ p {
 }
 
 .file-upload {
-    padding: 10px;
-    border-radius: 8px;
+    padding: 10.67px;
+    border-radius: 8.67px;
     background: #3a3a3a;
     color: white;
     text-align: center;
@@ -107,19 +107,19 @@ p {
 }
 
 #fileName {
-    font-size: 15px;
+    font-size: 15.67px;
     color: white;
     background: #505050;
-    padding: 3px;
-    border-radius: 8px;
+    padding: 3.67px;
+    border-radius: 8.67px;
     text-align: center;
 }
 
 .checkbox-group {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    font-size: 15px;
+    gap: 10.67px;
+    font-size: 15.67px;
     color: #ccc;
 }
 
@@ -146,5 +146,5 @@ input[type="checkbox"] {
 .team-color-group {
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 5.67px;
 }
