@@ -14,15 +14,20 @@ body {
 }
 
 h1 {
-    margin-top: 20px;
+    margin-top: 15px;
     font-size: 65px;
-    font-weight: 600;
     letter-spacing: 1px;
-    text-shadow: 2px 4px grey;
+    text-shadow: 1px 4px grey;
+}
+
+h2 {
+    margin-top: 6.7px;
+    font-weight: 600;
+    text-shadow: 1px 1px grey;
 }
 
 .components-container {
-    margin-top: 20px;
+    margin-top: 15px;
     width: 100%;
     max-width: 1200px;
     display: flex;
@@ -107,6 +112,7 @@ h1 {
 
 .checkbox-group {
     display: flex;
+    flex-direction: column;
     gap: 10px;
     font-size: 15px;
     color: #ccc;
@@ -129,7 +135,7 @@ input[type="checkbox"] {
 
 .playback:hover {
     background: #114664;
-    transform: scale(1.03);
+    transform: scale(1.35);
 }
 
 .team-color-group {
