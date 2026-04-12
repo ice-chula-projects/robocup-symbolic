@@ -98,7 +98,7 @@ score goals.
 There is only one midfielder controller, aptly named 'midfield' for the "Central Midfield" role.
 (TODO: Instead of 1 midfield, make that two)
 */
-control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+control(controller(midfield), _FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
         Action = action(kick, BestPassTargetPosition, 0.5);
@@ -106,8 +106,11 @@ control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(adaptive(Agent), Ball, AgentSettings, Action);
 
-    anchorAt(3/5, 1/2, Ball, FieldSettings, TargetPosition),
-    moveToPosition(TargetPosition, AgentSettings, Action)
+    predictBallPosition(fallback(current), Agent, Ball, PredictedBallPosition),
+    isDistanceFarEnough(AgentSettings, Agent, PredictedBallPosition) ->
+        moveToPosition(PredictedBallPosition, AgentSettings, Action);
+    
+    Action = action(rest)
 ).
 
 
@@ -137,11 +140,8 @@ control(controller(blocker /*TODO: change blocker to back*/), FieldSettings, Age
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(adaptive(Agent), Ball, AgentSettings, Action);
 
-    Agent = agent(_, _, CurrentPosition, _, _, _, _),
-    AgentSettings = agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
-    predictBallPosition(FieldSettings, Agent, Ball, PredictedBallPosition),
-    distance(CurrentPosition, PredictedBallPosition, DistanceToPredictedPosition),
-    DistanceToPredictedPosition > KickReach ->
+    predictBallPosition(fallback(home(FieldSettings)), Agent, Ball, PredictedBallPosition),
+    isDistanceFarEnough(AgentSettings, Agent, PredictedBallPosition) ->
         moveToPosition(PredictedBallPosition, AgentSettings, Action);
     
     Action = action(rest)
@@ -225,15 +225,14 @@ isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
 
 /* Move action utils */
 % Uses a dot product projection to intersect the ball's trajectory with the agent's position
-predictBallPosition(
-    FieldSettings,
-    agent(_, _, AgentPosition, _, _, HomePositionRelative, _),
+findBallTrajectoryIntercept(
+    agent(_, _, AgentPosition, _, _, _, _),
     ball(BallPosition, BallVelocity),
+    FallbackPosition,
     PredictedBallPosition
 ) :- (
     magnitude(BallVelocity, BallVelocityMagnitude), BallVelocityMagnitude =:= 0 -> (
-        relativeToAbsolute(HomePositionRelative, FieldSettings, HomePosition),
-        PredictedBallPosition = HomePosition
+        PredictedBallPosition = FallbackPosition
     );
 
     sub(AgentPosition, BallPosition, DistanceVector),
@@ -251,9 +250,17 @@ predictBallPosition(
     );
 
     % Ball is moving away from player
-    relativeToAbsolute(HomePositionRelative, FieldSettings, HomePosition),
-    PredictedBallPosition = HomePosition
+    PredictedBallPosition = FallbackPosition
 ).
+
+predictBallPosition(fallback(home(FieldSettings)), Agent, Ball, PredictedBallPosition) :-
+    Agent = agent(_, _, _, _, _, HomePositionRelative, _),
+    relativeToAbsolute(HomePositionRelative, FieldSettings, HomePosition),
+    findBallTrajectoryIntercept(Agent, Ball, HomePosition, PredictedBallPosition).
+
+predictBallPosition(fallback(current), Agent, Ball, PredictedBallPosition) :-
+    Agent = agent(_, _, CurrentPosition, _, _, _, _),
+    findBallTrajectoryIntercept(Agent, Ball, CurrentPosition, PredictedBallPosition).
 
 findYIntercept(
     Height,
@@ -318,6 +325,10 @@ chooseDestination(
     );
     Destination = ComputedDestination
 ).
+
+isDistanceFarEnough(agentSettings(kickSettings(KickReach, _, _), _, _, _, _), agent(_, _, CurrentPosition, _, _, _, _), Position) :-
+    distance(CurrentPosition, Position, DistanceToPredictedPosition),
+    DistanceToPredictedPosition > KickReach.
 
 % Finds the movement factor that allows the agent to move using the same energy as it decays
 sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
