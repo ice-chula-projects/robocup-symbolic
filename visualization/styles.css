@@ -140,7 +140,7 @@ input[type="checkbox"] {
 
 .playback:hover {
     background: #114664;
-    transform: scale(1.35);
+    transform: scale(1.03);
 }
 
 .team-color-group {
