@@ -382,27 +382,53 @@ bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
 
     max_member(_Score-BestPassTarget, Pairs).
 
-  % added content here
-timeCalculator(BallVelocity, PreviousPosition, TargetPosition, Time) :-
+% Calculates the time it would take for the ball to reach the target position based on its current velocity and position
+predictTime(BallVelocity, PreviousPosition, TargetPosition, Time) :-
     distance(PreviousPosition, TargetPosition, Distance),
     magnitude(BallVelocity, BallSpeed),
     BallSpeed > 0,
     Time is Distance / BallSpeed.
 
+%predicts the position of the ball when it reaches the target position by simulating the ball's movement and finding the intercept point
 ballPrediction(Ball, TargetPosition, PredictedPosition) :-
     Ball = ball(BallPosition, BallVelocity),
-    timeCalculator(BallVelocity, BallPosition, TargetPosition, TimeA),
+    predictTime(BallVelocity, BallPosition, TargetPosition, TimeA),
     scale(BallVelocity, TimeA, ScaledDistanceA),
     sub(TargetPosition, ScaledDistanceA, TempPredictedPosition),
 
-    timeCalculator(BallVelocity, BallPosition, TempPredictedPosition, TimeB),
+    predictTime(BallVelocity, BallPosition, TempPredictedPosition, TimeB),
     scale(BallVelocity, TimeB, ScaledDistanceB),
     add(TargetPosition, ScaledDistanceB, PredictedPosition).
-    
 
+% Kicks towards the target position by predicting where the ball will be when it reaches the target and kicking towards that point
 kickToPosition(Ball, TargetPosition, Action) :-
     % use best past target to kick towards
     % kick while the wall is moving 
     % calculate by pretending the target is moving at the same speed as the ball and finding the intercept point
     ballPrediction(Ball, TargetPosition, LeadPosition),
+    Action = action(kick, LeadPosition, 1).
+
+%Snape killed Dumbledore
+
+%V2 cus why not 
+%predicts the position of the ball when it reaches the target position by simulating the ball's movement and finding the intercept point
+ballPredictionAngle(agent(_, _, AgentPosition, _, _, _, _), Ball, TargetPosition, PredictedPosition) :-
+    Ball = ball(BallPosition, BallVelocity),
+    sub(BallPosition, AgentPosition, AgentToBall),
+    normalize(AgentToBall, DirectAgentToBall),
+    dot(BallVelocity, DirectAgentToBall, ParallelSpeed),
+    scale(DirectAgentToBall, ParallelSpeed, ParallelVelocity),
+    distance(AgentPosition, BallPosition, Distance),
+    AgentSettings = agentSettings(_, runSettings(RunMaxDistance, _), _, _, _),
+    RunMaxDistance > 0,
+    Time is Distance / RunMaxDistance,
+    scale(ParallelVelocity, Time, LeadOffset),
+    add(TargetPosition, LeadOffset, PredictedPosition).
+    
+% Kicks towards the target position by predicting where the ball will be when it reaches the target and kicking towards that point
+kickToPositionAngle(Agent, Ball, TargetPosition, Action) :-
+    % use best past target to kick towards
+    % kick while the wall is moving 
+    % calculate by pretending the target is moving at the same speed as the ball and finding the intercept point
+    ballPrediction(Agent, Ball, TargetPosition, LeadPosition),
     Action = action(kick, LeadPosition, 1).
