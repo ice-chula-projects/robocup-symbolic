@@ -93,15 +93,22 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
 
 Midfielders stay in the middle of the field, their priority is to send the ball
 they recieve from defenders forward to the attackers. They don't naturally
-score goals.
+score goals. (TODO: Current midfield AI is getting very striker-like)
 
 There is only one midfielder controller, aptly named 'midfield' for the "Central Midfield" role.
 (TODO: Instead of 1 midfield, make that two)
 */
 control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
-    canKick(AgentSettings, Agent, Ball, 1) ->
+    canKick(AgentSettings, Agent, Ball, 1) -> (
+        Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
+        FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
+        AgentPositionXRelative is AgentPositionX / Width,
+        (closestDistanceToGoal([Agent | OtherAgents], Agent), AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/) -> (
+            kickToGoal(FieldSettings, Action)
+        );
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.5);
+        Action = action(kick, BestPassTargetPosition, 0.5)
+    );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
@@ -162,9 +169,8 @@ control(controller(blocker /*TODO: change blocker to back*/), FieldSettings, Age
 to moving up and down in a straight line, they will try to approach the ball and pass
 it to one of the three backs. Even if they are the closest to the ball, agents of
 other roles will ignore that and continue to pursue the ball, since the goalkeeper cannot
-move in the X-axis to catch it.
-(TODO: Goalkeepers should stay in the middle and only move up and down when necessary
-to conserve energy)
+move in the X-axis to catch it. That is unless the ball is so near the goalkeeper, then it
+can move outside to kick it but immediately move back
 */
 control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % Will pass the ball to the best (nearest and in front) ally
@@ -202,7 +208,7 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
     Action = action(rest).
 
 /* DYNAMIC ROLES
-TODO: Add dynamic roles for backs, when backs enter the front, they become wings.
+TODO: Add dynamic roles for top/bottom midfields, when they enter the front, they become wings.
 */
 
 % TODO: Implement Pong mode (2 Goalkeepers fighting for the ball)
@@ -223,10 +229,14 @@ control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
     Action = action(move, vector(0, ClampedPositionY), 1).
 
-% TODO: move this to math
+% TODO: move these to math.pl
 clamp(X, Min, _, Min) :- X < Min, !.
 clamp(X, _, Max, Max) :- X > Max, !.
 clamp(X, _, _, X).
+
+sign(X, -1) :- X < 0, !.
+sign(X, 0) :- X =:= 0, !.
+sign(_, +1).
 
 % Predicates for filtering
 agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
@@ -262,8 +272,9 @@ findBallTrajectoryIntercept(
     PredictedBallPosition = FallbackPosition
 ).
 
-fallbackPosition(current).
-fallbackPosition(home(fieldSettings(_, _, _, _, _))).
+% Used alongside predictBallPosition to mark the fallback value if the ball is moving away
+fallbackPosition(current).  % Do nothing, this will be caught by any distance check and get converted into a rest action
+fallbackPosition(home(fieldSettings(_, _, _, _, _))).  % Return to the "home" position as defined by the initialPosition of the agent
 
 predictBallPosition(fallbackPosition(home(FieldSettings)), Agent, Ball, PredictedBallPosition) :-
     Agent = agent(_, _, _, _, _, HomePositionRelative, _),
@@ -305,6 +316,11 @@ closestDistanceToBall(AllAgents, Ball, ClosestAgent) :-
     include(agentInTeam(0), NonGoalKeepers, Allies),
     findall(DistanceToBall-A, (member(A, Allies), distanceToBall(A, Ball, DistanceToBall)), Pairs),
     min_member(_Distance-ClosestAgent, Pairs).
+
+closestDistanceToGoal(AllAgents, ClosestAgent) :-
+    include(agentInTeam(0), AllAgents, Allies),
+    findall(PositionX-A, (member(A, Allies), A = agent(_, _, vector(PositionX, _), _, _, _, _)), Pairs),
+    max_member(_PositionX-ClosestAgent, Pairs).
 
 % Decides between traveling to the computed destination or the home position depending on the direction of the movement.
 chooseDestination(
@@ -367,7 +383,7 @@ isBallMovingTowardsAgent(
         normalize(BallVelocity, NormalizedBallVelocity),
         normalize(DistanceVector, NormalizedDistanceVector),
         dot(NormalizedBallVelocity, NormalizedDistanceVector, CosineTheta),
-        CosineTheta < 0.9986  % cos(177°), 3° margin
+        CosineTheta < 0.9986  % cos(3°) for margin
     );
 
     false
@@ -454,7 +470,9 @@ bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
     findall(Score-A, (
         member(A, Allies), A = agent(_, _, vector(AX, _), _, _, _, _),
         agentDistance(A, Agent, Distance),
-        Score is 3*(AX - AgentPositionX) - Distance
+        DeltaX is AX - AgentPositionX,
+        sign(DeltaX, ForwardFactor),
+        Score is ForwardFactor * Distance
     ), Pairs),
 
     max_member(_Score-BestPassTarget, Pairs).
