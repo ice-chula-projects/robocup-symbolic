@@ -108,7 +108,7 @@ export default class Camera {
 
         this.playback = playback;
 
-        window.addEventListener("wheel", this.handleScroll.bind(this));
+        window.addEventListener("wheel", this.handleScroll.bind(this), { passive: false });
         window.addEventListener("mousemove", this.handleMouseDrag.bind(this));
         window.addEventListener("mousedown", this.handleMouseMiddleClick.bind(this));
         window.addEventListener("keydown", this.handleKeyboardInput.bind(this));
@@ -410,6 +410,7 @@ export default class Camera {
 
     handleScroll(e: WheelEvent) {
         if (e.target != this.canvas) return;
+        e.preventDefault();
         let zoomChange = KeyboardInput.keys.ShiftLeft ? -e.deltaY / 2000 : (-e.deltaY / 2000) * 5;
 
         this.zoom += zoomChange * this.zoom;
