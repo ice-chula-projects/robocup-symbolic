@@ -50,7 +50,7 @@ If they are the nearest agent from the ball, they will attempt to chase it.
 */
 control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
-        closestDistanceToGoal([Agent | OtherAgents], Agent) -> (
+        shouldKickToGoal(FieldSettings, AgentSettings, Agent, OtherAgents) -> (
             kickToGoal(FieldSettings, Action)
         );
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
@@ -66,7 +66,7 @@ control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, B
 % 'bottomwing' has the sane AI as the top wing but will always situate themselves below the ball. 
 control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
-        closestDistanceToGoal([Agent | OtherAgents], Agent) -> (
+        shouldKickToGoal(FieldSettings, AgentSettings, Agent, OtherAgents) -> (
             kickToGoal(FieldSettings, Action)
         );
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
@@ -91,9 +91,10 @@ If they are nearest to the ball, they will attempt to pursue it.
 control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
         Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
-        FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
+        FieldSettings = fieldSettings(vector(Width, Height), _, _, _, _),
         AgentPositionXRelative is AgentPositionX / Width,
-        AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/ -> (
+        GoalHeight is Height / 2,
+        (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight)) , AgentPositionXRelative > 0.60) /* Guard them from shooting at each other*/ -> (
             kickToGoal(FieldSettings, Action)
         );
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
@@ -446,6 +447,45 @@ isBallMovingTowardsAgent(
     false
 ).
 
+isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, TargetPosition) :-
+    AgentSettings = agentSettings(_, _, _, _, AgentRadius),
+    Agent = agent(_, _, AgentPosition, _, _, _, _),
+    
+    % Find nearest enemy
+    exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
+    include(agentInTeam(1), NonGoalKeepers, Opponents),
+    findall(Distance-A, (
+        member(A, Opponents),
+        agentDistance(A, Agent, Distance)
+    ), Pairs),
+
+    min_member(_Distance-NearestOpponent, Pairs),
+    NearestOpponent = agent(_, _, NearestOpponentPosition, _, _, _, _),
+    
+    % Check if enemy is between agent and target
+    sub(TargetPosition, AgentPosition, TrajectoryVector),
+    sub(NearestOpponentPosition, AgentPosition, ToEnemyVector),
+    
+    % Enemy must be between agent and target (dot product > 0 and not past target)
+    magnitude(TrajectoryVector, TrajectoryLength),
+    normalize(TrajectoryVector, NormalizedTrajectory),
+    dot(NormalizedTrajectory, ToEnemyVector, ProjectionLength),
+    ProjectionLength > 0,
+    ProjectionLength < TrajectoryLength,
+    
+    % Enemy must be within AgentRadius of the trajectory line
+    scale(NormalizedTrajectory, ProjectionLength, ProjectionVector),
+    sub(ToEnemyVector, ProjectionVector, PerpendicularVector),
+    magnitude(PerpendicularVector, PerpendicularDistance),
+    PerpendicularDistance < AgentRadius.
+
+shouldKickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agent, OtherAgents) :-
+    GoalHeight is Height/2,
+    (
+        closestDistanceToGoal([Agent | OtherAgents], Agent) ,
+        \+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight))
+    ).
+
 % (Width, 0) is top right (Q1)
 ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 1) :-
     HalfWidth is Width / 2,
@@ -548,7 +588,12 @@ kickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), Action) :-
 agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
     distance(FirstPosition, SecondPosition, Distance).
 
-bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
+topTwoMembers(Max1, Max2, List) :-
+    max_member(Max1, List),
+    select(Max1, List, Rest),
+    max_member(Max2, Rest).
+
+topTwoBestPassTargets(Agent, OtherAgents, BestPassTarget, SecondBestPassTarget) :-
     Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
     exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
     include(agentInTeam(0), NonGoalKeepers, Allies),
@@ -560,7 +605,7 @@ bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
         Score is ForwardFactor * Distance
     ), Pairs),
 
-    max_member(_Score-BestPassTarget, Pairs).
+    topTwoMembers(_BestScore-BestPassTarget, _SecondBestScore-SecondBestPassTarget, Pairs).
 
 % Calculates the time it would take for the ball to reach the target position based on the kicking strength factor
 predictTime(agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _, _), KickStrengthFactor, TargetPosition, ball(BallPosition, _), PredictedTravelTime) :-
@@ -579,9 +624,15 @@ accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPositi
   scale(TargetVelocity, PredictedTravelTime, TargetDisplacement),
   add(TargetPosition, TargetDisplacement, AdjustedTargetPosition). 
 
+chooseBestPassTarget(AgentSettings, Agent, OtherAgents, BestPosition, SecondBestPosition, TargetPosition) :-
+    (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, BestPosition)) -> (
+        TargetPosition = BestPosition
+    );
+    TargetPosition = SecondBestPosition.
 
 % Kicks towards the target position by predicting where the ball will be when it reaches the target and kicking towards that point
 passToBestTarget(AgentSettings, KickStrengthFactor, Agent, OtherAgents, Ball, Action) :-
-    bestPassTarget(Agent, OtherAgents, agent(_, _, TargetPosition, _, _, _, _)),
+    topTwoBestPassTargets(Agent, OtherAgents, agent(_, _, BestPosition, _, _, _, _), agent(_, _, SecondBestPosition, _, _, _, _)),
+    chooseBestPassTarget(AgentSettings, Agent, OtherAgents, BestPosition, SecondBestPosition, TargetPosition),
     accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition),
     Action = action(kick, AdjustedTargetPosition, KickStrengthFactor).
