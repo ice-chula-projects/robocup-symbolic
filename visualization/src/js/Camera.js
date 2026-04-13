@@ -43,7 +43,7 @@ export default class Camera {
     followMargin = 50;
     followTarget = CameraFollowTarget.none;
     followedAgentId;
-    followTextSize = 30;
+    infoTextSize = 30;
     rendering = {
         energyBar: true,
         agentName: true,
@@ -244,12 +244,18 @@ export default class Camera {
     }
     drawText(gameState) {
         const context = this.canvas.getContext("2d");
+        context.font = `${this.infoTextSize}px ${this.font}`;
+        context.fillStyle = this.textColor;
+        //show follow target
         if (this.followTarget != CameraFollowTarget.none) {
             const name = this.followTarget == CameraFollowTarget.ball ? "Ball" : gameState.agents[this.followedAgentId].name;
-            context.font = `${this.followTextSize}px ${this.font}`;
-            context.fillStyle = this.textColor;
             context.textAlign = "left";
             context.fillText(`Currently Following: ${name}`, 0, this.canvas.height - this.fontSize);
+        }
+        //show if currently paused
+        if (this.playback.running == false) {
+            context.textAlign = "right";
+            context.fillText("Paused", this.canvas.width, this.canvas.height - this.fontSize);
         }
     }
     drawAgents(gameState) {
