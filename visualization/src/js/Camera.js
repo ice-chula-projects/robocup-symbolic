@@ -378,6 +378,7 @@ export default class Camera {
     handleMouseMiddleClick(e) {
         if (e.target != this.canvas || e.buttons != 4)
             return;
+        e.preventDefault();
         if (this.followTarget != CameraFollowTarget.none) {
             this.stopFollowing();
             return;
