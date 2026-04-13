@@ -24,7 +24,7 @@ export default class Camera {
     team0Color = "blue";
     team1Color = "red";
     goalWidth = 25;
-    agentTextMargin = 2;
+    agentTextMargin = 5;
     font = "arial";
     fontSize = 12;
     textColor = "white";
@@ -46,9 +46,10 @@ export default class Camera {
     followTextSize = 30;
     rendering = {
         energyBar: true,
-        agentNameAndRole: true,
-        ballVelocityLine: true,
-        agentVelocityLine: true
+        agentName: true,
+        agentRole: true,
+        ballVelocityLine: false,
+        agentVelocityLine: false
     };
     lastMouseData = {};
     #targetFps = 60;
@@ -173,8 +174,6 @@ export default class Camera {
         if (agentRadius == null)
             agentRadius = 10;
         context.fillStyle = agent.team == 0 ? this.team0Color : this.team1Color;
-        context.font = `${Math.round(this.fontSize * this.zoom)}px ${this.font}`;
-        context.textAlign = "center";
         context.beginPath();
         const position = this.project(agent.position);
         context.moveTo(position.x, position.y);
@@ -227,10 +226,20 @@ export default class Camera {
             context.closePath();
         }
         //draw text
-        if (this.rendering.agentNameAndRole) {
-            context.fillStyle = this.textColor;
-            context.fillText(`Role: ${agent.role}`, position.x, position.y - (agentRadius + this.agentTextMargin) * this.zoom);
-            context.fillText(`Name: ${agent.name}`, position.x, position.y - (agentRadius + this.fontSize + this.agentTextMargin) * this.zoom);
+        context.font = `${Math.round(this.fontSize * this.zoom)}px ${this.font}`;
+        context.textAlign = "center";
+        context.fillStyle = this.textColor;
+        const textStack = [];
+        if (this.rendering.agentName)
+            textStack.push(`Name: ${agent.name}`);
+        if (this.rendering.agentRole)
+            textStack.push(`Role: ${agent.role}`);
+        //technically no longer a stack because im not popping but effectively the same
+        let yOffset = agentRadius + this.agentTextMargin;
+        for (let i = textStack.length - 1; i >= 0; i--) {
+            const text = textStack[i];
+            context.fillText(text, position.x, position.y - yOffset * this.zoom);
+            yOffset += this.fontSize;
         }
     }
     drawText(gameState) {
