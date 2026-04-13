@@ -16,7 +16,7 @@ export default class Camera {
     position: Vector2D = Vector2D.zero;
     zoom: number = 1;
 
-    cameraSpeed: number = 10;
+    cameraSpeed: number = 15;
     zoomSpeed: number = .1;
     zoomBounds: { min: number, max: number } = { min: 0.1, max: 10 };
 

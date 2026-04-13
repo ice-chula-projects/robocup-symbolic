@@ -11,7 +11,7 @@ export default class Camera {
     playback;
     position = Vector2D.zero;
     zoom = 1;
-    cameraSpeed = 10;
+    cameraSpeed = 15;
     zoomSpeed = .1;
     zoomBounds = { min: 0.1, max: 10 };
     backgroundColor = "darkgreen";
