@@ -95,7 +95,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
         Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
         FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
         AgentPositionXRelative is AgentPositionX / Width,
-        (closestDistanceToGoal([Agent | OtherAgents], Agent), AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/) -> (
+        (AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/) -> (
             kickToGoal(FieldSettings, Action)
         );
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
@@ -204,7 +204,7 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
     ;
 
     % If the ball is REALLY close, the goalkeeper can nudge it
-    (\+ isDistanceOverReach(kickReachMultiplier(3), AgentSettings, Agent, Ball)) ->
+    (\+ isDistanceOverReach(kickReachMultiplier(1), AgentSettings, Agent, Ball)) ->
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     % Immediately move back if the ball isn't in reach anymore
@@ -445,7 +445,7 @@ isBallMovingTowardsAgent(
         normalize(BallVelocity, NormalizedBallVelocity),
         normalize(DistanceVector, NormalizedDistanceVector),
         dot(NormalizedBallVelocity, NormalizedDistanceVector, CosineTheta),
-        CosineTheta < 0.9986  % cos(3°) for margin
+        CosineTheta < 0.99144  % cos(7.5°) for margin
     );
 
     false
