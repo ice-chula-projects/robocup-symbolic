@@ -51,7 +51,7 @@ If they are the nearest agent from the ball, they will attempt to chase it.
 control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
         shouldKickToGoal(FieldSettings, AgentSettings, Agent, OtherAgents) -> (
-            kickToGoal(FieldSettings, Action)
+            kickToGoal(FieldSettings, AgentSettings, Ball, Action)
         );
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
@@ -67,7 +67,7 @@ control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, B
 control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
         shouldKickToGoal(FieldSettings, AgentSettings, Agent, OtherAgents) -> (
-            kickToGoal(FieldSettings, Action)
+            kickToGoal(FieldSettings, AgentSettings, Ball, Action)
         );
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
@@ -95,7 +95,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
         AgentPositionXRelative is AgentPositionX / Width,
         GoalHeight is Height / 2,
         (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight)) , AgentPositionXRelative > 0.60) /* Guard them from shooting at each other*/ -> (
-            kickToGoal(FieldSettings, Action)
+            kickToGoal(FieldSettings, AgentSettings, Ball, Action)
         );
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
@@ -200,7 +200,7 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
     );
 
     % If the ball is REALLY close, the goalkeeper can nudge it
-    (\+ isDistanceOverReach(kickReachMultiplier(1), AgentSettings, Agent, Ball)) ->
+    (\+ isDistanceOverReach(kickReachMultiplier(3), AgentSettings, Agent, Ball)) ->
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     % Immediately move back if the ball isn't in reach anymore
@@ -581,9 +581,10 @@ anchorAt(WidthPercentage, HeightPercentage, ball(BallPosition, _), fieldSettings
 
 /* Kick action utils */
 
-kickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), Action) :-
+kickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Ball, Action) :-
     GoalHeight is Height/2,
-    Action = action(kick, vector(Width,GoalHeight), 1).
+    accountKickTargetForBallVelocity(AgentSettings, 1, vector(Width,GoalHeight), Ball, AdjustedGoalPosition),
+    Action = action(kick, AdjustedGoalPosition, 1).
 
 agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
     distance(FirstPosition, SecondPosition, Distance).
