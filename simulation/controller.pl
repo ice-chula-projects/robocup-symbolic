@@ -210,10 +210,10 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
 
     clamp(YIntercept, MinPositionY, MaxPositionY, ClampedPositionY),
     distanceToBall(Agent, Ball, DistanceToBall),
-    GoalSizeTimesHeight is GoalSize * Height,
-    DistanceToBall < GoalSizeTimesHeight ->
+    GoalSizeReach is GoalSize * Height * 2,
+    DistanceToBall < GoalSizeReach ->
         chooseDestination(Agent, Ball, fieldSettings(vector(Width, Height), _, _, _, _), vector(0, ClampedPositionY), Destination),
-        moveToPosition(movement(dash), Destination, AgentSettings, Action);
+        moveToPosition(movement(adaptive), Agent, Destination, AgentSettings, Action);
 
     GoalHeight is Height / 2,
     isDistanceOverReach(kickReachMultiplier(1), AgentSettings, Agent, vector(0, GoalHeight)) ->
