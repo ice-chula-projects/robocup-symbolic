@@ -567,28 +567,26 @@ bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
 
     max_member(_Score-BestPassTarget, Pairs).
 
-% Calculates the time it would take for the ball to reach the target position based on its current velocity and position
-predictTime(BallVelocity, PreviousPosition, TargetPosition, Time) :-
-    distance(PreviousPosition, TargetPosition, Distance),
-    magnitude(BallVelocity, BallSpeed),
-    BallSpeed > 0,
-    Time is Distance / BallSpeed.
+% Calculates the time it would take for the ball to reach the target position based on the kicking strength factor
+predictTime(agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _, _), KickStrengthFactor, TargetPosition, ball(BallPosition, _), PredictedTravelTime) :-
+    EffectiveKickStrength is KickMaxStrength * KickStrengthFactor,
+    distance(BallPosition, TargetPosition, Distance),
+    PredictedTravelTime is Distance / EffectiveKickStrength.
 
-%predicts the position of the ball when it reaches the target position by simulating the ball's movement and finding the intercept point
-ballPrediction(Ball, TargetPosition, PredictedPosition) :-
-    Ball = ball(BallPosition, BallVelocity),
-    predictTime(BallVelocity, BallPosition, TargetPosition, TimeA),
-    scale(BallVelocity, TimeA, ScaledDistanceA),
-    sub(TargetPosition, ScaledDistanceA, TempPredictedPosition),
+accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition) :-
+  % Kick Strength is the magnitude of the velocity change of the ball on kick
+  predictTime(AgentSettings, KickStrengthFactor, TargetPosition, Ball, PredictedTravelTime),
 
-    predictTime(BallVelocity, BallPosition, TempPredictedPosition, TimeB),
-    scale(BallVelocity, TimeB, ScaledDistanceB),
-    add(TargetPosition, ScaledDistanceB, PredictedPosition).
+  % pretend the ball is still by acting like the target has velocity of BallVe locity in the negative direction
+  % then kick towards where the target would be
+  Ball = ball(_, BallVelocity),
+  scale(BallVelocity, -1, TargetVelocity),
+  scale(TargetVelocity, PredictedTravelTime, TargetDisplacement),
+  add(TargetPosition, TargetDisplacement, AdjustedTargetPosition). 
+
 
 % Kicks towards the target position by predicting where the ball will be when it reaches the target and kicking towards that point
-kickToPosition(Ball, TargetPosition, Action) :-
-    % use best past target to kick towards
-    % kick while the wall is moving 
-    % calculate by pretending the target is moving at the same speed as the ball and finding the intercept point
-    ballPrediction(Ball, TargetPosition, LeadPosition),
-    Action = action(kick, LeadPosition, 1).
+passToBestTarget(AgentSettings, KickStrengthFactor, Agent, OtherAgents, Ball, Action) :-
+    bestPassTarget(Agent, OtherAgents, agent(_, _, TargetPosition, _, _, _, _)),
+    accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition),
+    Action = action(kick, AdjustedTargetPosition, KickStrengthFactor).
