@@ -1,9 +1,8 @@
-import Camera from "./Camera.js";
 import Color from "./Color.js";
 import Playback from "./Playback.js";
 import UserInterface from "./UserInterface.js";
-const playback = new Playback(document.getElementById("gameLogFileInput"), document.getElementById("loadButton"));
-const camera = new Camera(document.getElementById("canvas"), playback);
+const playback = new Playback(document.getElementById("gameLogFileInput"), document.getElementById("loadButton"), document.getElementById("canvas"));
+const camera = playback.camera;
 const checkBoxElements = {};
 checkBoxElements.nameDisplay = document.getElementById("nameDisplay");
 checkBoxElements.roleDisplay = document.getElementById("roleDisplay");
@@ -21,7 +20,6 @@ fileInputElements.fileInput = document.getElementById("gameLogFileInput");
 fileInputElements.fileNameDisplay = document.getElementById("fileName");
 const pauseButton = document.getElementById("pauseButton");
 const userInterface = new UserInterface(camera, checkBoxElements, colorElements, speedSliderElements, fileInputElements, pauseButton);
-camera.start();
 //@ts-ignore
 window.playback = playback;
 //@ts-ignore

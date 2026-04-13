@@ -1,3 +1,4 @@
+import Camera from "./Camera.js"
 import Vector2D from "./lib/Vector2D.js"
 
 export type GameLog = {
@@ -97,6 +98,7 @@ export type BallProcessed = {
 export default class Playback {
     fileInput: HTMLInputElement;
     loadButton: HTMLButtonElement;
+    camera: Camera;
 
     currentGameLog: GameLog;
     currentStateIndex: number = 0;
@@ -136,9 +138,11 @@ export default class Playback {
         }
     }
 
-    constructor(fileInput: HTMLInputElement, loadButton: HTMLButtonElement) {
+    constructor(fileInput: HTMLInputElement, loadButton: HTMLButtonElement, canvas: HTMLCanvasElement) {
         this.fileInput = fileInput;
         this.loadButton = loadButton;
+        this.camera = new Camera(canvas, this);
+        this.camera.start();
 
         this.loadButton.addEventListener("click", this.load.bind(this));
     }
@@ -216,5 +220,8 @@ export default class Playback {
         this.currentGameLog = JSON.parse(await this.fileInput.files[0].text());
         this.#loaded = true;
         this.currentStateIndex = 0;
+
+        this.camera.position = new Vector2D(this.currentGameLog.fieldSettings.dimensions.width/2, this.currentGameLog.fieldSettings.dimensions.height/2);
+        this.camera.zoom = 1;
     }
 }

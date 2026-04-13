@@ -1,7 +1,9 @@
+import Camera from "./Camera.js";
 import Vector2D from "./lib/Vector2D.js";
 export default class Playback {
     fileInput;
     loadButton;
+    camera;
     currentGameLog;
     currentStateIndex = 0;
     get gameLength() {
@@ -34,9 +36,11 @@ export default class Playback {
             this.start();
         }
     }
-    constructor(fileInput, loadButton) {
+    constructor(fileInput, loadButton, canvas) {
         this.fileInput = fileInput;
         this.loadButton = loadButton;
+        this.camera = new Camera(canvas, this);
+        this.camera.start();
         this.loadButton.addEventListener("click", this.load.bind(this));
     }
     start() {
@@ -109,5 +113,7 @@ export default class Playback {
         this.currentGameLog = JSON.parse(await this.fileInput.files[0].text());
         this.#loaded = true;
         this.currentStateIndex = 0;
+        this.camera.position = new Vector2D(this.currentGameLog.fieldSettings.dimensions.width / 2, this.currentGameLog.fieldSettings.dimensions.height / 2);
+        this.camera.zoom = 1;
     }
 }
