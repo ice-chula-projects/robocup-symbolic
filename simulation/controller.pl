@@ -104,7 +104,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
     EnergyThreshold is MaxEnergy * 0.98,
 
     relativeToAbsolute(vector(3/4, 1/2), FieldSettings, DesignatedSpot),
-    (Energy >= EnergyThreshold , isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, DesignatedSpot)) -> (  % Go to designated spot if there's nothing to do
+    (Energy >= EnergyThreshold, isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, DesignatedSpot)) -> (  % Go to designated spot if there's nothing to do
         moveToPosition(movement(sustainable), DesignatedSpot, AgentSettings, Action)
     );
     
@@ -127,7 +127,7 @@ control(controller(topmidfield), FieldSettings, AgentSettings, Agent, OtherAgent
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
-    anchorAt(3/5, 0, Ball, FieldSettings, TargetPosition),
+    anchorAt(3/5, 1/3, Ball, FieldSettings, TargetPosition),
     moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
 ).
 
@@ -139,7 +139,7 @@ control(controller(bottommidfield), FieldSettings, AgentSettings, Agent, OtherAg
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
-    anchorAt(3/5, 1, Ball, FieldSettings, TargetPosition),
+    anchorAt(3/5, 2/3, Ball, FieldSettings, TargetPosition),
     moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
 ).
 
