@@ -160,7 +160,7 @@ pathfinding algorithm to find a spot where they can move to that intercepts the 
 If they are far enough from the ball, they will return to their home position (initialPosition) and rest
 If they are the nearest agent from the ball, they will attempt to chase it.
 */
-control(controller(blocker /*TODO: change blocker to back*/), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+control(controller(back), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     % Will pass the ball to the best (nearest and in front) ally
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
