@@ -440,7 +440,7 @@ isBallMovingTowardsAgent(
         normalize(BallVelocity, NormalizedBallVelocity),
         normalize(DistanceVector, NormalizedDistanceVector),
         dot(NormalizedBallVelocity, NormalizedDistanceVector, CosineTheta),
-        CosineTheta < 0.99144  % cos(7.5°) for margin
+        CosineTheta > 0.99144  % cos(7.5°) for margin
     );
 
     false
