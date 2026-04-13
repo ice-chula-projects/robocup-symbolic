@@ -50,11 +50,10 @@ If they are the nearest agent from the ball, they will attempt to chase it.
 */
 control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
-        (closestDistanceToGoal([Agent | OtherAgents], Agent)) -> (
+        closestDistanceToGoal([Agent | OtherAgents], Agent) -> (
             kickToGoal(FieldSettings, Action)
         );
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.5)
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
@@ -67,11 +66,10 @@ control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, B
 % 'bottomwing' has the sane AI as the top wing but will always situate themselves below the ball. 
 control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
-        (closestDistanceToGoal([Agent | OtherAgents], Agent)) -> (
+        closestDistanceToGoal([Agent | OtherAgents], Agent) -> (
             kickToGoal(FieldSettings, Action)
         );
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.5)
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
@@ -95,11 +93,10 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
         Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
         FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
         AgentPositionXRelative is AgentPositionX / Width,
-        (AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/) -> (
+        AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/ -> (
             kickToGoal(FieldSettings, Action)
         );
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.5)
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
@@ -130,9 +127,9 @@ score goals.
 There is only one midfielder controller, aptly named 'midfield' for the "Top Midfield" and "Bottom Midfield" roles.
 */
 control(controller(topmidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.5);
+    canKick(AgentSettings, Agent, Ball, 1) -> (
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
+    );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
@@ -142,9 +139,9 @@ control(controller(topmidfield), FieldSettings, AgentSettings, Agent, OtherAgent
 ).
 
 control(controller(bottommidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.5);
+    canKick(AgentSettings, Agent, Ball, 1) -> (
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
+    );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
@@ -173,8 +170,7 @@ If they are the nearest agent from the ball, they will attempt to chase it.
 control(controller(back), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     % Will pass the ball to the best (nearest and in front) ally
     canKick(AgentSettings, Agent, Ball, 1) ->
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.75)
+        passToBestTarget(AgentSettings, 0.75, Agent, OtherAgents, Ball, Action)
     ;
     
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
@@ -198,10 +194,9 @@ can move outside to kick it but immediately move back
 */
 control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % Will pass the ball to the best (nearest and in front) ally
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
-        Action = action(kick, BestPassTargetPosition, 0.65)
-    ;
+    canKick(AgentSettings, Agent, Ball, 1) -> (
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
+    );
 
     % If the ball is REALLY close, the goalkeeper can nudge it
     (\+ isDistanceOverReach(kickReachMultiplier(1), AgentSettings, Agent, Ball)) ->
