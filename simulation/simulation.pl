@@ -51,28 +51,42 @@ team(1).
 runSimulation(FieldSettings, AgentSettings, Agents) :-
     resetRound(FieldSettings, AgentSettings, Agents, InitialAgents, InitialBall),
     InitialState = state(FieldSettings, AgentSettings, gameState(InitialBall, InitialAgents, 1, score(0,0))),
-    runSimulation(InitialState, GameStates),
+    runSimulation(InitialState, GameStates, 0, inf),
+    exportState(FieldSettings, AgentSettings, GameStates),
+    !.
+
+runSimulationWithTimeLimit(FieldSettings, AgentSettings, Agents, TimeLimit) :-
+    resetRound(FieldSettings, AgentSettings, Agents, InitialAgents, InitialBall),
+    InitialState = state(FieldSettings, AgentSettings, gameState(InitialBall, InitialAgents, 1, score(0,0))),
+    runSimulation(InitialState, GameStates, 0, TimeLimit),
     exportState(FieldSettings, AgentSettings, GameStates),
     !.
 
 % same as runSimulation but takes in the initialState predicate directly
 % meant for debugging and testing purposes only
 runSimulationFromInitialState(InitialState) :-
-    runSimulation(InitialState, GameStates),
+    runSimulation(InitialState, GameStates, 0, inf),
     InitialState = state(FieldSettings, AgentSettings, _),
     exportState(FieldSettings, AgentSettings, GameStates),
     !.
 
+runSimulationFromInitialState(InitialState, TimeLimit) :-
+    runSimulation(InitialState, GameStates, 0, TimeLimit),
+    InitialState = state(FieldSettings, AgentSettings, _),
+    exportState(FieldSettings, AgentSettings, GameStates),
+    !.
 
 % base case, a game is "over" when any team has more score than WinningScore
-runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, gameState(_, _, _, score(Team0, Team1))), []) :-
+runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, gameState(_, _, _, score(Team0, Team1))), [], Time, TimeLimit) :-
     Team0 >= WinningScore;
-    Team1 >= WinningScore.
+    Team1 >= WinningScore;
+    Time >= TimeLimit.
 
-runSimulation(InitialState, [NextGameState | GameStates]) :-
+runSimulation(InitialState, [NextGameState | GameStates], Time, TimeLimit) :-
     step(InitialState, NextState),
     NextState = state(_, _, NextGameState),
-    runSimulation(NextState, GameStates).
+    NextTime is Time + 1,
+    runSimulation(NextState, GameStates, NextTime, TimeLimit).
 
 exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunMaxEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation), AgentRadius), GameStates) :-
     gameStatesToJson(GameStates, GameStateJsons),
