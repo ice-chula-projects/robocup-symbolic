@@ -22,21 +22,21 @@
             <hr>
             <span>Visualizer Options:</span>
             <div class="checkbox-group">
-                <label><input type="checkbox" id="toggleName" checked> Name</label>
-                <label><input type="checkbox" id="toggleEnergy" checked> Energy</label>
-                <label><input type="checkbox" id="toggleRole" checked> Role</label>
-                <label><input type="checkbox" id="toggleAgentVelocity" checked> Agent Velocity</label>
-                <label><input type="checkbox" id="toggleBallVelocity" checked> Ball Velocity</label>
+                <label><input type="checkbox" id="nameDisplay" checked> Name</label>
+                <label><input type="checkbox" id="roleDisplay" checked> Role</label>
+                <label><input type="checkbox" id="energyDisplay" checked> Energy</label>
+                <label><input type="checkbox" id="agentVelocityDisplay"> Agent Velocity</label>
+                <label><input type="checkbox" id="ballVelocityDisplay"> Ball Velocity</label>
             </div>
             <div class="team-color-group">
                 <label for="teamAColor">Team A</label>
-                <input type="color" id="teamAColor" value="#ff0000">
+                <input type="color" id="team0Color" value="#0000ff">
                 <label for="teamBColor">Team B</label>
-                <input type="color" id="teamBColor" value="#0000ff">
+                <input type="color" id="team1Color" value="#ff0000">
             </div>
 
             <span>Playback Controls:</span>
-            <button class="playback" id="playPause">Play/Pause</button>
+            <button class="playback" id="pauseButton">Play/Pause</button>
             <label for="speedSlider">
             Speed: <span id="speedValue">1x</span>
             </label>
@@ -50,6 +50,7 @@
             <p><strong>B</strong> - Follow Ball</p>
             <p><strong>F</strong> - Follow Nearest Target</p>
             <p><strong>Tab</strong> - Cycle through Agents</p>
+            <p><strong>Space</strong> - Stop Following</p>
         </div>
 
         <div class="canvas-container">
