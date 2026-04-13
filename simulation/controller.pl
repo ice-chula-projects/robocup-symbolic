@@ -39,7 +39,6 @@ Attackers make up the offense of the game. When they get the ball, they will att
 by shooting at the goal.
 
 There are three types of defender controllers in this project: 'topwing', 'bottomwing', and 'striker'.
-(TODO: Condense topwing and bottomwing into one role)
 */
 
 /* WINGS
@@ -60,7 +59,7 @@ control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, B
     moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
 ).
 
-% 'bottomwing' is the same thing but at the bottom. (TODO: condense the roles to wing(0) and wing(1))
+% 'bottomwing' has the sane AI as the top wing but will always situate themselves below the ball. 
 control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> 
         kickToGoal(FieldSettings, Action);
@@ -86,7 +85,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
         Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
         FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
         AgentPositionXRelative is AgentPositionX / Width,
-        (closestDistanceToGoal([Agent | OtherAgents], Agent), AgentPositionXRelative > 0.65 /* Guard them from shooting at each other*/) -> (
+        (closestDistanceToGoal([Agent | OtherAgents], Agent), AgentPositionXRelative > 0.60 /* Guard them from shooting at each other*/) -> (
             kickToGoal(FieldSettings, Action)
         );
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
@@ -118,19 +117,29 @@ Midfielders stay in the middle of the field, their priority is to send the ball
 they recieve from defenders forward to the attackers. They don't naturally
 score goals.
 
-There is only one midfielder controller, aptly named 'midfield' for the "Central Midfield" role.
-(TODO: Instead of 1 midfield, make that two. The roles will become "Top/Bottom Midfield" leaving room
-for the striker to be the one in the middle)
+There is only one midfielder controller, aptly named 'midfield' for the "Top Midfield" and "Bottom Midfield" roles.
 */
-control(controller(midfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+control(controller(topmidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) ->
         bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
         Action = action(kick, BestPassTargetPosition, 0.5);
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
-        moveToBall(adaptive, Agent, Ball, AgentSettings, Action);
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
-    anchorAt(3/5, 1/2, Ball, FieldSettings, TargetPosition),
+    anchorAt(3/5, 0, Ball, FieldSettings, TargetPosition),
+    moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
+).
+
+control(controller(bottommidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    canKick(AgentSettings, Agent, Ball, 1) ->
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        Action = action(kick, BestPassTargetPosition, 0.5);
+
+    closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
+        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
+
+    anchorAt(3/5, 1, Ball, FieldSettings, TargetPosition),
     moveToPosition(movement(sustainable), TargetPosition, AgentSettings, Action)
 ).
 
