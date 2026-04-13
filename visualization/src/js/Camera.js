@@ -74,6 +74,7 @@ export default class Camera {
         window.addEventListener("wheel", this.handleScroll.bind(this));
         window.addEventListener("mousemove", this.handleMouseDrag.bind(this));
         window.addEventListener("mousedown", this.handleMouseMiddleClick.bind(this));
+        window.addEventListener("keydown", this.handleKeyboardInput.bind(this));
         window.addEventListener("resize", () => {
             this.canvas.width = this.canvas.clientWidth;
             this.canvas.height = this.canvas.clientHeight;
@@ -97,7 +98,7 @@ export default class Camera {
         const gameState = this.playback.getCurrentState();
         if (gameState == null)
             return;
-        this.handleInput();
+        this.handleMovementInput();
         if (this.followTarget != CameraFollowTarget.none)
             this.updateFollow(gameState);
         this.render(gameState);
@@ -247,7 +248,66 @@ export default class Camera {
             this.drawAgent(agent);
         }
     }
-    handleInput() {
+    // sets the follow target to an agent or ball if they are close enough
+    followNearby(position) {
+        const gameState = this.playback.getCurrentState();
+        //ball checking
+        if (Vector2D.getDistance(position, gameState.ball.position) <= this.ballRadius + this.followMargin)
+            this.followTarget = CameraFollowTarget.ball;
+        //agents
+        for (const agent of gameState.agents) {
+            if (Vector2D.getDistance(position, agent.position) <= this.playback.currentGameLog.agentSettings.agentRadius + this.followMargin) {
+                this.followTarget = CameraFollowTarget.agent;
+                this.followedAgentId = agent.id;
+                break;
+            }
+        }
+    }
+    stopFollowing() {
+        this.followTarget = CameraFollowTarget.none;
+        this.followedAgentId = null;
+    }
+    handleKeyboardInput(e) {
+        switch (e.code) {
+            // follow ball
+            case "KeyB":
+                if (this.followTarget != CameraFollowTarget.ball)
+                    this.followTarget = CameraFollowTarget.ball;
+                else
+                    this.stopFollowing();
+                break;
+            //cycle through agents
+            case "Tab":
+                e.preventDefault();
+                if (this.followTarget == CameraFollowTarget.none) {
+                    this.followTarget = CameraFollowTarget.agent;
+                    this.followedAgentId = 0;
+                }
+                else {
+                    if (e.shiftKey == false)
+                        this.followedAgentId++;
+                    else
+                        this.followedAgentId--;
+                    if (this.followedAgentId >= this.playback.agentsLength)
+                        this.followedAgentId = 0;
+                    else if (this.followedAgentId < 0)
+                        this.followedAgentId = this.playback.agentsLength - 1;
+                }
+                break;
+            //same as middleclick
+            case "KeyF":
+                if (this.followTarget != CameraFollowTarget.none)
+                    this.stopFollowing();
+                else
+                    this.followNearby(this.position);
+                break;
+            //stops follow
+            case "Space":
+                this.stopFollowing();
+                break;
+        }
+    }
+    handleMovementInput() {
         //zooming
         const relativeZoomSpeed = this.zoomSpeed * this.zoom;
         if (KeyboardInput.keys.KeyQ)
@@ -300,23 +360,11 @@ export default class Camera {
         if (e.target != this.canvas || e.buttons != 4)
             return;
         if (this.followTarget != CameraFollowTarget.none) {
-            this.followTarget = CameraFollowTarget.none;
-            this.followedAgentId = null;
+            this.stopFollowing();
             return;
         }
         const position = this.mouseCoordinatesToWorldCoordinates(new Vector2D(e.x, e.y));
-        const gameState = this.playback.getCurrentState();
-        //ball checking
-        if (Vector2D.getDistance(position, gameState.ball.position) <= this.ballRadius + this.followMargin)
-            this.followTarget = CameraFollowTarget.ball;
-        //agents
-        for (const agent of gameState.agents) {
-            if (Vector2D.getDistance(position, agent.position) <= this.playback.currentGameLog.agentSettings.agentRadius + this.followMargin) {
-                this.followTarget = CameraFollowTarget.agent;
-                this.followedAgentId = agent.id;
-                break;
-            }
-        }
+        this.followNearby(position);
     }
     mouseCoordinatesToWorldCoordinates(mouseCoordinates) {
         let bounding = this.canvas.getBoundingClientRect();

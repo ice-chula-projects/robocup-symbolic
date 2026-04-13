@@ -104,6 +104,11 @@ export default class Playback {
         if (this.currentGameLog == null) return null;
         return this.currentGameLog.gameStates.length;
     }
+
+    get agentsLength(): number {
+        if (this.currentGameLog == null) return null;
+        return this.currentGameLog.gameStates[0].agents.length;
+    }
     #loaded = false;
 
     get loaded(): boolean{

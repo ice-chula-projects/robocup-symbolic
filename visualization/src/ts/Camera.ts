@@ -27,7 +27,7 @@ export default class Camera {
     ballVelocityLineScale: number = 5;
     ballVelocityLineColor: string = "red";
 
-    
+
     borderWidth: number = 3;
     borderColor: string = "white";
 
@@ -105,10 +105,11 @@ export default class Camera {
 
         this.playback = playback;
 
-        window.addEventListener("wheel", this.handleScroll.bind(this))
-        window.addEventListener("mousemove", this.handleMouseDrag.bind(this))
-        window.addEventListener("mousedown", this.handleMouseMiddleClick.bind(this))
-        
+        window.addEventListener("wheel", this.handleScroll.bind(this));
+        window.addEventListener("mousemove", this.handleMouseDrag.bind(this));
+        window.addEventListener("mousedown", this.handleMouseMiddleClick.bind(this));
+        window.addEventListener("keydown", this.handleKeyboardInput.bind(this));
+
         window.addEventListener("resize", () => {
             this.canvas.width = this.canvas.clientWidth;
             this.canvas.height = this.canvas.clientHeight;
@@ -133,7 +134,7 @@ export default class Camera {
         const gameState: GameStateProcessed = this.playback.getCurrentState();
         if (gameState == null) return;
 
-        this.handleInput()
+        this.handleMovementInput()
         if (this.followTarget != CameraFollowTarget.none) this.updateFollow(gameState);
         this.render(gameState);
     }
@@ -195,15 +196,15 @@ export default class Camera {
     drawBall(gameState: GameStateProcessed) {
         const context = this.canvas.getContext("2d");
         const position = this.project(gameState.ball.position);
-        
+
         context.fillStyle = this.ballColor;
         context.beginPath();
         context.arc(position.x, position.y, this.ballRadius * this.zoom, 0, 2 * Math.PI);
         context.closePath();
         context.fill();
-        
+
         //ball velocity line
-        if(this.rendering.ballVelocityLine){
+        if (this.rendering.ballVelocityLine) {
             const predictedPosition = this.project(gameState.ball.position.add(gameState.ball.velocity.scale(this.ballVelocityLineScale)));
             context.strokeStyle = this.ballVelocityLineColor;
 
@@ -237,7 +238,7 @@ export default class Camera {
             const velocity = nextAgent.position.sub(agent.position);
             // const predictedPosition = this.project(agent.position.add(velocity.normalize().scale(this.agentVelocityLineLength)));
             // context.strokeStyle = Color.lerp(Color.fromCssString(this.agentVelocityLineSlowColor), Color.fromCssString(this.agentVelocityLineFastColor), velocity.length / this.agentVelocityFastThreshold).toCssString();
-            
+
             const predictedPosition = this.project(agent.position.add(velocity.scale(this.agentVelocityLineScale)));
             context.strokeStyle = this.agentVelocityLineColor;
 
@@ -290,11 +291,11 @@ export default class Camera {
         }
     }
 
-    drawText(gameState: GameStateProcessed): void{
+    drawText(gameState: GameStateProcessed): void {
         const context = this.canvas.getContext("2d");
 
-        if(this.followTarget != CameraFollowTarget.none){
-            const name = this.followTarget == CameraFollowTarget.ball? "Ball" : gameState.agents[this.followedAgentId].name;
+        if (this.followTarget != CameraFollowTarget.none) {
+            const name = this.followTarget == CameraFollowTarget.ball ? "Ball" : gameState.agents[this.followedAgentId].name;
             context.font = `${this.followTextSize}px ${this.font}`;
             context.fillStyle = this.textColor;
             context.textAlign = "left";
@@ -308,7 +309,67 @@ export default class Camera {
         }
     }
 
-    handleInput(): void {
+    // sets the follow target to an agent or ball if they are close enough
+    followNearby(position: Vector2D) {
+        const gameState = this.playback.getCurrentState();
+
+        //ball checking
+        if (Vector2D.getDistance(position, gameState.ball.position) <= this.ballRadius + this.followMargin) this.followTarget = CameraFollowTarget.ball;
+
+        //agents
+        for (const agent of gameState.agents) {
+            if (Vector2D.getDistance(position, agent.position) <= this.playback.currentGameLog.agentSettings.agentRadius + this.followMargin) {
+                this.followTarget = CameraFollowTarget.agent;
+                this.followedAgentId = agent.id;
+                break;
+            }
+        }
+    }
+
+    stopFollowing(): void{
+        this.followTarget = CameraFollowTarget.none;
+        this.followedAgentId = null;
+    }
+
+    handleKeyboardInput(e: KeyboardEvent): void {
+        switch (e.code) {
+            // follow ball
+            case "KeyB":
+                if (this.followTarget != CameraFollowTarget.ball) this.followTarget = CameraFollowTarget.ball;
+                else this.stopFollowing();
+                break;
+
+            //cycle through agents
+            case "Tab":
+                e.preventDefault();
+                if (this.followTarget == CameraFollowTarget.none) {
+                    this.followTarget = CameraFollowTarget.agent
+                    this.followedAgentId = 0;
+                }
+
+                else {
+                    if (e.shiftKey == false) this.followedAgentId++;
+                    else this.followedAgentId--;
+
+                    if (this.followedAgentId >= this.playback.agentsLength) this.followedAgentId = 0;
+                    else if (this.followedAgentId < 0) this.followedAgentId = this.playback.agentsLength - 1;
+                }
+                break;
+
+            //same as middleclick
+            case "KeyF":
+                if (this.followTarget != CameraFollowTarget.none) this.stopFollowing();
+                else this.followNearby(this.position);
+                break;
+            
+            //stops follow
+            case "Space":
+                this.stopFollowing();
+                break;
+        }
+    }
+
+    handleMovementInput(): void {
         //zooming
         const relativeZoomSpeed = this.zoomSpeed * this.zoom;
         if (KeyboardInput.keys.KeyQ) this.zoom += relativeZoomSpeed;
@@ -352,34 +413,20 @@ export default class Camera {
         }
     }
 
-     handleMouseMiddleClick(e: MouseEvent): void{
-        if(e.target != this.canvas || e.buttons != 4) return;
-        if(this.followTarget != CameraFollowTarget.none){
-            this.followTarget = CameraFollowTarget.none;
-            this.followedAgentId = null;
+    handleMouseMiddleClick(e: MouseEvent): void {
+        if (e.target != this.canvas || e.buttons != 4) return;
+        if (this.followTarget != CameraFollowTarget.none) {
+            this.stopFollowing();
             return;
         }
 
         const position = this.mouseCoordinatesToWorldCoordinates(new Vector2D(e.x, e.y))
-        
-        const gameState = this.playback.getCurrentState();
-        
-        //ball checking
-        if(Vector2D.getDistance(position, gameState.ball.position) <= this.ballRadius + this.followMargin) this.followTarget = CameraFollowTarget.ball;
-
-        //agents
-        for(const agent of gameState.agents){
-            if(Vector2D.getDistance(position,agent.position) <= this.playback.currentGameLog.agentSettings.agentRadius + this.followMargin){
-                this.followTarget = CameraFollowTarget.agent;
-                this.followedAgentId = agent.id;
-                break; 
-            }
-        }
+        this.followNearby(position);
     }
 
     mouseCoordinatesToWorldCoordinates(mouseCoordinates: Vector2D) {
         let bounding = this.canvas.getBoundingClientRect();
-        let offsetVector = new Vector2D(bounding.left,bounding.top);
+        let offsetVector = new Vector2D(bounding.left, bounding.top);
 
         //convert screen coordinates into canvas coordinates
         let projectedCoordinates = mouseCoordinates.sub(offsetVector);
@@ -393,7 +440,7 @@ export default class Camera {
     }
 
     reverseProject(position: Vector2D): Vector2D {
-        return position.sub(new Vector2D(this.canvas.width / 2, this.canvas.height / 2)).scale(1/this.zoom).add(this.position);
+        return position.sub(new Vector2D(this.canvas.width / 2, this.canvas.height / 2)).scale(1 / this.zoom).add(this.position);
     }
 
     clear(): void {
