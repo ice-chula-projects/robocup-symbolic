@@ -294,7 +294,7 @@ export default class Camera {
             //cycle through agents
             case "Tab":
                 e.preventDefault();
-                if (this.followTarget == CameraFollowTarget.none) {
+                if (this.followTarget != CameraFollowTarget.agent) {
                     this.followTarget = CameraFollowTarget.agent;
                     this.followedAgentId = 0;
                 }
