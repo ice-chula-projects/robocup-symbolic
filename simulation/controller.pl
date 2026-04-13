@@ -49,8 +49,13 @@ by having an adaptive default position that's always situated above the ball.
 If they are the nearest agent from the ball, they will attempt to chase it.
 */
 control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
-    canKick(AgentSettings, Agent, Ball, 1) -> 
-        kickToGoal(FieldSettings, Action);
+    canKick(AgentSettings, Agent, Ball, 1) -> (
+        (closestDistanceToGoal([Agent | OtherAgents], Agent)) -> (
+            kickToGoal(FieldSettings, Action)
+        );
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        Action = action(kick, BestPassTargetPosition, 0.5)
+    );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) ->
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
@@ -61,8 +66,13 @@ control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, B
 
 % 'bottomwing' has the sane AI as the top wing but will always situate themselves below the ball. 
 control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
-    canKick(AgentSettings, Agent, Ball, 1) -> 
-        kickToGoal(FieldSettings, Action);
+    canKick(AgentSettings, Agent, Ball, 1) -> (
+        (closestDistanceToGoal([Agent | OtherAgents], Agent)) -> (
+            kickToGoal(FieldSettings, Action)
+        );
+        bestPassTarget(Agent, OtherAgents, agent(_, _, BestPassTargetPosition, _, _, _, _)),
+        Action = action(kick, BestPassTargetPosition, 0.5)
+    );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
