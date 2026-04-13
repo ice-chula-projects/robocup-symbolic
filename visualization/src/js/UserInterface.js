@@ -18,6 +18,9 @@ export default class UserInterface {
         this.setupElements();
         //sometimes browsers cache the values
         this.synchronizeSettings();
+        //since pause button can also be changed via camera controls
+        //we manually check every now and then to update the value
+        setInterval(this.updatePauseButtonDisplay.bind(this), 1000 / 24);
     }
     synchronizeSettings() {
         this.camera.rendering.agentName = this.checkBoxElements.nameDisplay.checked;
@@ -28,7 +31,7 @@ export default class UserInterface {
         this.camera.team0Color = this.colorElements.team0Color.value;
         this.camera.team1Color = this.colorElements.team1Color.value;
         this.updatePlaybackSpeed();
-        this.updateFileInput();
+        this.updateFileInputDisplay();
     }
     setupElements() {
         this.checkBoxElements.nameDisplay.addEventListener("change", () => {
@@ -53,14 +56,8 @@ export default class UserInterface {
             this.camera.team1Color = this.colorElements.team1Color.value;
         });
         this.speedSliderElements.speedSlider.addEventListener("change", this.updatePlaybackSpeed.bind(this));
-        this.fileInputElements.fileInput.addEventListener("change", this.updateFileInput.bind(this));
-        this.pauseButton.addEventListener("click", () => {
-            this.playBack.toggleRunning();
-            if (this.playBack.running)
-                this.pauseButton.innerText = "Pause";
-            else
-                this.pauseButton.innerText = "Play";
-        });
+        this.fileInputElements.fileInput.addEventListener("change", this.updateFileInputDisplay.bind(this));
+        this.pauseButton.addEventListener("click", this.playBack.toggleRunning.bind(this.playBack));
     }
     updatePlaybackSpeed() {
         const speedSlider = this.speedSliderElements.speedSlider;
@@ -76,7 +73,7 @@ export default class UserInterface {
         }
         ;
     }
-    updateFileInput() {
+    updateFileInputDisplay() {
         const fileInput = this.fileInputElements.fileInput;
         const fileNameDisplay = this.fileInputElements.fileNameDisplay;
         if (fileInput.files.length > 0) {
@@ -85,5 +82,11 @@ export default class UserInterface {
         else {
             fileNameDisplay.textContent = "No file selected";
         }
+    }
+    updatePauseButtonDisplay() {
+        if (this.playBack.running)
+            this.pauseButton.innerText = "Pause";
+        else
+            this.pauseButton.innerText = "Play";
     }
 }

@@ -50,6 +50,11 @@ export default class UserInterface {
 
         //sometimes browsers cache the values
         this.synchronizeSettings();
+
+        //since pause button can also be changed via camera controls
+        //we manually check every now and then to update the value
+
+        setInterval(this.updatePauseButtonDisplay.bind(this), 1000/24)
     }
 
     synchronizeSettings(): void {
@@ -63,7 +68,7 @@ export default class UserInterface {
         this.camera.team1Color = this.colorElements.team1Color.value;
 
         this.updatePlaybackSpeed();
-        this.updateFileInput();
+        this.updateFileInputDisplay();
     }
 
     setupElements() {
@@ -96,14 +101,9 @@ export default class UserInterface {
         })
 
         this.speedSliderElements.speedSlider.addEventListener("change", this.updatePlaybackSpeed.bind(this));
-        this.fileInputElements.fileInput.addEventListener("change", this.updateFileInput.bind(this));
+        this.fileInputElements.fileInput.addEventListener("change", this.updateFileInputDisplay.bind(this));
 
-        this.pauseButton.addEventListener("click", () => {
-            this.playBack.toggleRunning();
-
-            if(this.playBack.running) this.pauseButton.innerText = "Pause";
-            else this.pauseButton.innerText = "Play";
-        });
+        this.pauseButton.addEventListener("click", this.playBack.toggleRunning.bind(this.playBack));
     }
 
     updatePlaybackSpeed() {
@@ -121,7 +121,7 @@ export default class UserInterface {
         };
     }
 
-    updateFileInput() {
+    updateFileInputDisplay() {
         const fileInput = this.fileInputElements.fileInput;
         const fileNameDisplay = this.fileInputElements.fileNameDisplay;
 
@@ -130,5 +130,10 @@ export default class UserInterface {
         } else {
             fileNameDisplay.textContent = "No file selected";
         }
+    }
+
+    updatePauseButtonDisplay() {
+        if(this.playBack.running) this.pauseButton.innerText = "Pause";
+        else this.pauseButton.innerText = "Play";
     }
 }

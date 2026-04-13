@@ -377,6 +377,10 @@ export default class Camera {
             case "Space":
                 this.stopFollowing();
                 break;
+            
+            case "KeyP":
+                this.playback.toggleRunning();
+                break;
         }
     }
 
