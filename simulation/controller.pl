@@ -222,8 +222,46 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
     Action = action(rest).
 
 /* DYNAMIC ROLES
-TODO: Add dynamic roles for top/bottom midfields, when they enter the front, they become wings.
+
+In a 3-2-1 7v7 Football position, the agents focus a lot on defense, passing the ball
+to the only attacker in the field (the striker). But the midfielder on the other side
+that isn't doing anything can dash forward and become a wing. For these dynamic roles,
+a quadrant system has been implemented so that if the ball is in a specific quadrant
+(Q1 = top right, Q2 = top left, Q3 = bottom left, Q4 = bottom right just like in maths),
+the roles of the midfielders can change into a wing.
 */
+
+/* TOP DYNAMIC
+
+This role will be rendered as "Top Midfield" to the interface when they are using midfielder AI,
+and a "Top Wing" when they are using wing AI (TODO: Await "NextRole" feature).
+*/
+control(controller(topdynamic), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    % When the ball is in quadrant 1 or 3, be a top wing
+    ballQuadrant(FieldSettings, Ball, Quadrant),
+    (Quadrant = 1 ; Quadrant = 3) -> (
+        control(controller(topwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action)    
+    );
+
+    % When the ball us in quadrant 2 or 4, be a top midfield
+    control(controller(topmidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action)
+).
+
+/* BOTTOM DYNAMIC
+
+This role will be rendered as "Bottom Midfield" to the interface when they are using midfielder AI,
+and a "Bottom Wing" when they are using wing AI (TODO: Await "NextRole" feature).
+*/
+control(controller(bottomdynamic), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
+    % When the ball is in quadrant 4 or 2, be a bottom wing
+    ballQuadrant(FieldSettings, Ball, Quadrant),
+    (Quadrant = 4 ; Quadrant = 2) -> (
+        control(controller(bottomwing), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action)    
+    );
+
+    % When the ball us in quadrant 3 or 1, be a bottom midfield
+    control(controller(bottommidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action)
+).
 
 % TODO: Implement Pong mode (2 Goalkeepers fighting for the ball)
 control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, _OtherAgents, Ball, Action) :-
@@ -402,6 +440,34 @@ isBallMovingTowardsAgent(
 
     false
 ).
+
+% (Width, 0) is top right (Q1)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 1) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX >= HalfWidth,
+    BallPositionY < HalfHeight.
+
+% (0, 0) is top left (Q2)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 2) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX < HalfWidth,
+    BallPositionY < HalfHeight.
+
+% (0, Height) is bottom left (Q3)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 3) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX < HalfWidth,
+    BallPositionY >= HalfHeight.
+
+% (Width, Height) is bottom right (Q4)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 4) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX >= HalfWidth,
+    BallPositionY >= HalfHeight.
 
 % Finds the movement factor that allows the agent to move using the same energy as it decays
 sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
