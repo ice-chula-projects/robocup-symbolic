@@ -1,7 +1,7 @@
 import Camera from "./Camera.js";
 import Color from "./Color.js";
 import Playback from "./Playback.js";
-import UserInterface, { ButtonElements, CheckBoxElements, ColorElements, FileInputElements, SpeedSliderElements } from "./UserInterface.js";
+import UserInterface, { CheckBoxElements, ColorElements, FileInputElements, SpeedSliderElements } from "./UserInterface.js";
 
 const playback = new Playback(document.getElementById("gameLogFileInput") as HTMLInputElement, document.getElementById("loadButton") as HTMLButtonElement);
 const camera = new Camera(document.getElementById("canvas") as HTMLCanvasElement, playback);
@@ -28,7 +28,7 @@ fileInputElements.fileNameDisplay = document.getElementById("fileName") as HTMLS
 const pauseButton = document.getElementById("pauseButton") as HTMLButtonElement;
 
 const userInterface = new UserInterface(camera, checkBoxElements, colorElements, speedSliderElements, fileInputElements, pauseButton);
-playback.start();
+
 camera.start();
 
 

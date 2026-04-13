@@ -154,6 +154,11 @@ export default class Playback {
         this.#intervalId = null;
     }
 
+    toggleRunning(): void{
+        if (this.running) this.stop();
+        else this.start();
+    }
+
     update(): void {
         if (this.currentGameLog == null) return;
 

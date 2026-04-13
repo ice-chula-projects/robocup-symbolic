@@ -21,7 +21,6 @@ fileInputElements.fileInput = document.getElementById("gameLogFileInput");
 fileInputElements.fileNameDisplay = document.getElementById("fileName");
 const pauseButton = document.getElementById("pauseButton");
 const userInterface = new UserInterface(camera, checkBoxElements, colorElements, speedSliderElements, fileInputElements, pauseButton);
-playback.start();
 camera.start();
 //@ts-ignore
 window.playback = playback;

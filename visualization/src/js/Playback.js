@@ -50,6 +50,12 @@ export default class Playback {
         clearInterval(this.#intervalId);
         this.#intervalId = null;
     }
+    toggleRunning() {
+        if (this.running)
+            this.stop();
+        else
+            this.start();
+    }
     update() {
         if (this.currentGameLog == null)
             return;
