@@ -96,7 +96,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     predictBallPosition(fallbackPosition(current), Agent, Ball, PredictedBallPosition),
-    isDistanceInReach(kickReachMultiplier(1.0), AgentSettings, Agent, PredictedBallPosition) ->
+    isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, PredictedBallPosition) ->
         moveToPosition(movement(adaptive), Agent, PredictedBallPosition, AgentSettings, Action);
 
     Agent = agent(_, _, _, Energy, _, _, _),
@@ -104,7 +104,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
     EnergyThreshold is MaxEnergy * 0.98,
 
     relativeToAbsolute(vector(3/4, 1/2), FieldSettings, DesignatedSpot),
-    (Energy >= EnergyThreshold , \+ isDistanceInReach(3.0, AgentSettings, Agent, DesignatedSpot)) -> (  % Go to designated spot if there's nothing to do
+    (Energy >= EnergyThreshold , isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, DesignatedSpot)) -> (  % Go to designated spot if there's nothing to do
         moveToPosition(movement(sustainable), DesignatedSpot, AgentSettings, Action)
     );
     
@@ -171,7 +171,7 @@ control(controller(back), FieldSettings, AgentSettings, Agent, OtherAgents, Ball
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     predictBallPosition(fallbackPosition(home(FieldSettings)), Agent, Ball, PredictedBallPosition),
-    isDistanceInReach(kickReachMultiplier(1.0), AgentSettings, Agent, PredictedBallPosition) ->
+    isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, PredictedBallPosition) ->
         moveToPosition(movement(sustainable), PredictedBallPosition, AgentSettings, Action);
     
     Action = action(rest)
@@ -194,7 +194,7 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
     ;
 
     % If the ball is REALLY close, the goalkeeper can nudge it
-    (\+ isDistanceInReach(kickReachMultiplier(3), AgentSettings, Agent, Ball)) ->
+    (\+ isDistanceOverReach(kickReachMultiplier(3), AgentSettings, Agent, Ball)) ->
         moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     % Immediately move back if the ball isn't in reach anymore
@@ -216,7 +216,7 @@ control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _
         moveToPosition(movement(dash), Destination, AgentSettings, Action);
 
     GoalHeight is Height / 2,
-    isDistanceInReach(kickReachMultiplier(1), AgentSettings, Agent, vector(0, GoalHeight)) ->
+    isDistanceOverReach(kickReachMultiplier(1), AgentSettings, Agent, vector(0, GoalHeight)) ->
         moveToPosition(movement(sustainable), vector(0, GoalHeight), AgentSettings, Action);
 
     Action = action(rest).
@@ -370,7 +370,7 @@ chooseDestination(
 kickReachMultiplier(Multiplier) :- float(Multiplier), Multiplier >= 1.0.
 
 % Calculates the distance from an agent to a position and sees if it's in reach of a specific range (KickReach * Multiplier)
-isDistanceInReach(
+isDistanceOverReach(
     kickReachMultiplier(Multiplier),
     agentSettings(kickSettings(KickReach, _, _), _, _, _, _),
     agent(_, _, CurrentPosition, _, _, _, _),
@@ -381,8 +381,8 @@ isDistanceInReach(
     DistanceToPredictedPosition > ScaledReach.
 
 % Overload for ball distance
-isDistanceInReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, ball(BallPosition, _)) :-
-    isDistanceInReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, BallPosition).
+isDistanceOverReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, ball(BallPosition, _)) :-
+    isDistanceOverReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, BallPosition).
 
 isBallMovingTowardsAgent(
     agent(_, _, AgentPosition, _, _, _, _),
