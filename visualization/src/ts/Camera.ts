@@ -233,7 +233,8 @@ export default class Camera {
         }
     }
 
-    drawAgent(agent: AgentProcessed, gameState: GameStateProcessed) {
+    //previous Agents is used for rendering energy bar
+    drawAgent(agent: AgentProcessed, previousAgents: AgentProcessed[][], gameState: GameStateProcessed) {
         const context = this.canvas.getContext("2d");
         let agentRadius = this.playback.currentGameLog.agentSettings.agentRadius;
         //backwards compatability
@@ -288,17 +289,21 @@ export default class Camera {
             // context.fillRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarWidth, this.energyBarHeight * this.zoom)
             // context.strokeRect(position.x - energyBarFullWidth/2, position.y + (agentRadius + this.agentInformationMargin) * this.zoom, energyBarFullWidth, this.energyBarHeight * this.zoom);
 
-            const previousAgent = this.playback.getRelativeState(-this.energyBarPersistance).agents[agent.id];
-
+            let highestPreviousEnergy = -Infinity;
+            for(const previousAgent of previousAgents.map(x => x[agent.id])){
+                if(previousAgent.energy > highestPreviousEnergy) highestPreviousEnergy = previousAgent.energy;
+            }
+            
             const energyFraction = agent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
-            const previousEnergyFraction = previousAgent.energy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
+            const persistedEnergyFraction = highestPreviousEnergy / this.playback.currentGameLog.agentSettings.energySettings.maxEnergy;
             const radius = (agentRadius + this.energyBarMargin + this.energyBarThickness / 2) * this.zoom;
             context.lineWidth = this.energyBarThickness * this.zoom;
 
+
             context.strokeStyle = this.energyBarDepletedColor;
             context.beginPath();
-            if (previousEnergyFraction == 1) context.arc(position.x, position.y, radius, 0, 2 * Math.PI);
-            else context.arc(position.x, position.y, radius, -Math.PI / 2, (-Math.PI / 2) + 2 * Math.PI * (1 - previousEnergyFraction), true);
+            if (persistedEnergyFraction == 1) context.arc(position.x, position.y, radius, 0, 2 * Math.PI);
+            else context.arc(position.x, position.y, radius, -Math.PI / 2, (-Math.PI / 2) + 2 * Math.PI * (1 - persistedEnergyFraction), true);
             context.stroke();
             context.closePath();
 
@@ -374,8 +379,13 @@ export default class Camera {
     }
 
     drawAgents(gameState: GameStateProcessed) {
+        const previousAgents: AgentProcessed[][] = []
+        for(let i = 1; i <= this.energyBarPersistance; i++){
+            previousAgents.push(this.playback.getRelativeState(-i).agents);
+        }
+
         for (const agent of gameState.agents) {
-            this.drawAgent(agent, gameState);
+            this.drawAgent(agent, previousAgents, gameState);
         }
     }
 
