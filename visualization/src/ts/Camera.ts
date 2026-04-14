@@ -46,7 +46,7 @@ export default class Camera {
     agentTextMargin: number = 5;
     
     infoTextSize: number = 30;
-    infoTextMargin: number = 2;
+    infoTextMargin: number = 6;
     
     // agentVelocityFastThreshold: number = 5;
     // agentVelocityLineLength: number = 20;

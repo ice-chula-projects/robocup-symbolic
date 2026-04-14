@@ -31,7 +31,7 @@ export default class Camera {
     agentFontSize = 12;
     agentTextMargin = 5;
     infoTextSize = 30;
-    infoTextMargin = 2;
+    infoTextMargin = 6;
     // agentVelocityFastThreshold: number = 5;
     // agentVelocityLineLength: number = 20;
     // agentVelocityLineSlowColor: string = "green";
