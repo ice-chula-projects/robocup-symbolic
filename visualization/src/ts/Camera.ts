@@ -24,6 +24,8 @@ export default class Camera {
 
     ballRadius: number = 5;
     ballColor: string = "white";
+    ballStrokeColor: string = "black";
+    ballStrokeWidth: number = 1;
     ballVelocityLineScale: number = 5;
     ballVelocityLineColor: string = "red";
 
@@ -202,6 +204,14 @@ export default class Camera {
         const context = this.canvas.getContext("2d");
         const position = this.project(gameState.ball.position);
 
+        //draw stroke
+        context.beginPath();
+        context.fillStyle = this.ballStrokeColor;
+        context.arc(position.x, position.y, (this.ballRadius + this.ballStrokeWidth) * this.zoom, 0, 2 * Math.PI);
+        context.closePath();
+        context.fill();
+
+        //draw ball
         context.fillStyle = this.ballColor;
         context.beginPath();
         context.arc(position.x, position.y, this.ballRadius * this.zoom, 0, 2 * Math.PI);
