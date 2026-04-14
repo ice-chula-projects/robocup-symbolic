@@ -36,12 +36,16 @@ export default class Camera {
 
     goalWidth: number = 25;
 
-    agentTextMargin: number = 5;
-
+    
     font: string = "arial";
-    fontSize: number = 12;
     textColor: string = "white";
-
+    
+    agentFontSize: number = 12;
+    agentTextMargin: number = 5;
+    
+    infoTextSize: number = 30;
+    infoTextMargin: number = 2;
+    
     // agentVelocityFastThreshold: number = 5;
     // agentVelocityLineLength: number = 20;
     // agentVelocityLineSlowColor: string = "green";
@@ -61,8 +65,6 @@ export default class Camera {
     followTarget: CameraFollowTarget = CameraFollowTarget.none;
     followedAgentId: number;
     
-    infoTextSize: number = 30;
-
     rendering: {
         energyBar: boolean,
         agentName: boolean,
@@ -158,7 +160,7 @@ export default class Camera {
         this.drawField();
         this.drawBall(gameState);
         this.drawAgents(gameState);
-        this.drawText(gameState);
+        this.drawInfoText(gameState);
     }
 
     drawField() {
@@ -285,7 +287,7 @@ export default class Camera {
         }
 
         //draw text
-        context.font = `${Math.round(this.fontSize * this.zoom)}px ${this.font}`;
+        context.font = `${Math.round(this.agentFontSize * this.zoom)}px ${this.font}`;
         context.textAlign = "center";
         context.fillStyle = this.textColor;
         
@@ -298,27 +300,34 @@ export default class Camera {
         for(let i = textStack.length - 1; i >= 0; i--){
             const text = textStack[i];
             context.fillText(text, position.x, position.y - yOffset * this.zoom);
-            yOffset += this.fontSize;
+            yOffset += this.agentFontSize;
         }
 
     }
 
-    drawText(gameState: GameStateProcessed): void {
+    drawInfoText(gameState: GameStateProcessed): void {
         const context = this.canvas.getContext("2d");
         context.font = `${this.infoTextSize}px ${this.font}`;
         context.fillStyle = this.textColor;
+
+
+
+        //round and score display
+        context.textAlign = "center";
+        context.fillText(`Round ${gameState.round}`, this.canvas.width/2, this.infoTextSize + this.infoTextMargin);
+        context.fillText(`${gameState.score.team0}-${gameState.score.team1}`, this.canvas.width/2, 2*this.infoTextSize + this.infoTextMargin);
 
         //show follow target
         if (this.followTarget != CameraFollowTarget.none) {
             const name = this.followTarget == CameraFollowTarget.ball ? "Ball" : gameState.agents[this.followedAgentId].name;
             context.textAlign = "left";
-            context.fillText(`Currently Following: ${name}`, 0, this.canvas.height - this.fontSize)
+            context.fillText(`Currently Following: ${name}`, 0, this.canvas.height);
         }
 
         //show if currently paused
         if (this.playback.running == false){
             context.textAlign = "right";
-            context.fillText("Paused", this.canvas.width, this.canvas.height - this.fontSize);
+            context.fillText("Paused", this.canvas.width - this.infoTextMargin, this.canvas.height - this.infoTextMargin);
         }
     }
 
@@ -440,7 +449,7 @@ export default class Camera {
     handleMouseMiddleClick(e: MouseEvent): void {
         if (e.target != this.canvas || e.buttons != 4) return;
         e.preventDefault();
-        
+
         if (this.followTarget != CameraFollowTarget.none) {
             this.stopFollowing();
             return;
