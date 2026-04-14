@@ -101,12 +101,23 @@ export default class Playback {
     camera: Camera;
 
     currentGameLog: GameLog;
-    currentStateIndex: number = 0;
-
+    #currentStateIndex: number = 0;
+    
     //how many ticks to wait on round transition
     roundTransitionBuffer: number = 120;
     #roundTransitionTimer: number = null;
 
+    get currentStateIndex(): number{
+        return this.#currentStateIndex;
+    }
+
+    set currentStateIndex(nextIndex: number){
+        if(nextIndex >= this.gameLength) nextIndex = this.gameLength - 1;
+        if(nextIndex < 0) nextIndex = 0;
+
+        this.#currentStateIndex = nextIndex;
+    }
+    
     get isRoundTransition(): boolean {
         return this.#roundTransitionTimer > 0;
     }

@@ -5,10 +5,20 @@ export default class Playback {
     loadButton;
     camera;
     currentGameLog;
-    currentStateIndex = 0;
+    #currentStateIndex = 0;
     //how many ticks to wait on round transition
     roundTransitionBuffer = 120;
     #roundTransitionTimer = null;
+    get currentStateIndex() {
+        return this.#currentStateIndex;
+    }
+    set currentStateIndex(nextIndex) {
+        if (nextIndex >= this.gameLength)
+            nextIndex = this.gameLength - 1;
+        if (nextIndex < 0)
+            nextIndex = 0;
+        this.#currentStateIndex = nextIndex;
+    }
     get isRoundTransition() {
         return this.#roundTransitionTimer > 0;
     }

@@ -444,6 +444,16 @@ export default class Camera {
             case "KeyV":
                 this.rendering.infoText = !this.rendering.infoText;
                 break;
+            
+            // for debugging
+            // steps forwards/backwards if currently paused
+            case "KeyG":
+                if(this.playback.running) return;
+                
+                if(e.shiftKey) this.playback.currentStateIndex--;
+                else this.playback.currentStateIndex++;
+                break;
+            
         }
     }
 
