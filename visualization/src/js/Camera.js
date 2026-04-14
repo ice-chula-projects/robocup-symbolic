@@ -22,7 +22,7 @@ export default class Camera {
     ballVelocityLineScale = 5;
     ballVelocityLineColor = "red";
     borderWidth = 3;
-    borderColor = "white";
+    borderColor = "lightgrey";
     team0Color = "blue";
     team1Color = "red";
     goalWidth = 25;
@@ -283,6 +283,20 @@ export default class Camera {
         if (this.playback.running == false) {
             context.textAlign = "right";
             context.fillText("Paused", this.canvas.width - this.infoTextMargin, this.canvas.height - this.infoTextMargin);
+        }
+        //show who scored during transiton
+        if (this.playback.isRoundTransition) {
+            context.font = `${2 * this.infoTextSize}px ${this.font}`;
+            let scoreText;
+            //score during transition frame is 1 frame ahead
+            if (score.team0 > gameState.score.team0)
+                scoreText = "Team 0 Scores!";
+            else
+                scoreText = "Team 1 Scores!";
+            context.textAlign = "center";
+            context.fillText(scoreText, this.canvas.width / 2, this.canvas.height / 2);
+            // reset the font size incase i ever add anything else below this
+            context.font = `${this.infoTextSize}px ${this.font}`;
         }
     }
     drawAgents(gameState) {
