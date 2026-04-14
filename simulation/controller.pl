@@ -94,7 +94,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
         FieldSettings = fieldSettings(vector(Width, Height), _, _, _, _),
         AgentPositionXRelative is AgentPositionX / Width,
         GoalHeight is Height / 2,
-        (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight)) , AgentPositionXRelative > 0.60) /* Guard them from shooting at each other*/ -> (
+        (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight))) -> (
             kickToGoal(FieldSettings, AgentSettings, Ball, Action)
         );
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
