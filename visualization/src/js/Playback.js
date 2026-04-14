@@ -6,6 +6,12 @@ export default class Playback {
     camera;
     currentGameLog;
     currentStateIndex = 0;
+    //how many ticks to wait on round transition
+    roundTransitionBuffer = 120;
+    #roundTransitionTimer = null;
+    get isRoundTransition() {
+        return this.#roundTransitionTimer > 0;
+    }
     get gameLength() {
         if (this.currentGameLog == null)
             return null;
@@ -15,6 +21,11 @@ export default class Playback {
         if (this.currentGameLog == null)
             return null;
         return this.currentGameLog.gameStates[0].agents.length;
+    }
+    get currentRound() {
+        if (this.currentGameLog == null)
+            return null;
+        return this.currentGameLog.gameStates[this.currentStateIndex].round;
     }
     #loaded = false;
     get loaded() {
@@ -63,9 +74,29 @@ export default class Playback {
     update() {
         if (this.currentGameLog == null)
             return;
-        this.currentStateIndex += 1;
-        if (this.currentStateIndex >= this.gameLength)
-            this.currentStateIndex = 0;
+        if (this.isRoundTransition) {
+            this.#roundTransitionTimer--;
+            if (this.#roundTransitionTimer == 0)
+                this.incrementStateIndex();
+            return;
+        }
+        //if next frame is a different round, enable the round transition
+        if (this.currentGameLog.gameStates[this.currentStateIndex + 1].round != this.currentRound) {
+            this.#roundTransitionTimer = this.roundTransitionBuffer;
+            return;
+        }
+        this.incrementStateIndex();
+    }
+    incrementStateIndex() {
+        let nextStateIndex = this.currentStateIndex + 1;
+        //due to a quirk of the simulation, the very last frame of a fully completed game is actually the beginning of a round that is never played
+        //since the round is reset before the simulation exits 
+        if (nextStateIndex >= this.gameLength - 1) {
+            this.#roundTransitionTimer = Infinity;
+            nextStateIndex = this.currentStateIndex;
+        }
+        ;
+        this.currentStateIndex = nextStateIndex;
     }
     processGameState(gameState) {
         const agents = gameState.agents;
@@ -79,12 +110,18 @@ export default class Playback {
             });
         }
         const ball = gameState.ball;
+        const ballProcessed = {
+            position: new Vector2D(ball.position.x, ball.position.y),
+            velocity: new Vector2D(ball.velocity.x, ball.velocity.y)
+        };
+        // since the round transition tick is the tick before the ball enters the goal
+        // during a round transition we fake the ball's position by 1 frame so that
+        // the ball appears to be inside of the goal 
+        if (this.isRoundTransition)
+            ballProcessed.position = ballProcessed.position.add(ballProcessed.velocity);
         return {
             ...gameState,
-            ball: {
-                position: new Vector2D(ball.position.x, ball.position.y),
-                velocity: new Vector2D(ball.velocity.x, ball.velocity.y)
-            },
+            ball: ballProcessed,
             agents: agentsProcessed
         };
     }
@@ -112,6 +149,7 @@ export default class Playback {
         this.#loaded = false;
         this.currentGameLog = JSON.parse(await this.fileInput.files[0].text());
         this.#loaded = true;
+        this.#roundTransitionTimer = null;
         this.currentStateIndex = 0;
         this.camera.position = new Vector2D(this.currentGameLog.fieldSettings.dimensions.width / 2, this.currentGameLog.fieldSettings.dimensions.height / 2);
         this.camera.zoom = 1;
