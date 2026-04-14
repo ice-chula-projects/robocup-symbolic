@@ -215,6 +215,18 @@ control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_
     clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
     Action = action(move, vector(0, ClampedPositionY), 1).
 
+
+control(controller(railgun), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :-
+    findLineUpRepulsionForce(FieldSettings, Agent, OtherAgents, Force),
+    AbsForce is abs(Force),
+    AbsForce < 1 ->
+        (canKick(AgentSettings, Agent, Ball, 1) ->
+        accelerate(Agent, Ball, Action)
+        ;
+        lineUp(FieldSettings, AgentSettings, Agent, OtherAgents, Action))
+    ;
+    lineUp(FieldSettings, AgentSettings, Agent, OtherAgents, Action).
+
 % TODO: move this to math
 clamp(X, Min, _, Min) :- X < Min, !.
 clamp(X, _, Max, Max) :- X > Max, !.
@@ -381,3 +393,57 @@ bestPassTarget(Agent, OtherAgents, BestPassTarget) :-
     ), Pairs),
 
     max_member(_Score-BestPassTarget, Pairs).
+
+
+
+% make all other railguns and the wall apply a "repulsion" force based on distance
+% which will slowly converge to an evenly spaced line
+
+findLineUpRepulsionForce(fieldSettings(vector(Width, _),_,_,_,_), agent(_, _, vector(XPosition, _), _, _, _, _), OtherAgents, TotalRepulsionForce) :-
+    include(isRailgun, OtherAgents, OtherRailguns),
+    maplist(getAgentXPosition, OtherRailguns, OtherRailgunsXPositions),
+    maplist(repulsionForce(XPosition), OtherRailgunsXPositions, RepulsionForces),
+    sum_list(RepulsionForces, AgentRepulsionForce),
+    % left and right wall repulsion
+    repulsionForce(XPosition, 0, LeftWallRepulsion),
+    repulsionForce(XPosition, Width, RightWallRepulsion),
+    TotalRepulsionForce is AgentRepulsionForce + LeftWallRepulsion + RightWallRepulsion.
+
+lineUp(fieldSettings(vector(Width, Height),_,_,_,_), AgentSettings, agent(_, _, vector(XPosition, _), _, _, _, _), OtherAgents, Action) :-
+    findLineUpRepulsionForce(fieldSettings(vector(Width, _),_,_,_,_), agent(_, _, vector(XPosition, _), _, _, _, _), OtherAgents, TotalRepulsionForce),
+    NextPositionX is TotalRepulsionForce + XPosition,
+    MiddleY is Height / 2,
+    sustainableMovementFactor(AgentSettings, Factor),
+    Action = action(move, vector(NextPositionX, MiddleY), Factor).
+
+
+% i got inspired by how multiplying by the complement of a complex number "zeroes" out the y value
+% basically kick in a direction so that when the velocity is added together, the angle Theta results in 0
+% then kick at max strength forwards and we have a railgun!
+accelerate(agent(_, _, vector(XPosition, YPosition), _, _, _, _), ball(_, vector(VelocityX, VelocityY)), Action) :-
+    VelocityX == 0 ->
+    TargetPositionX is XPosition + 1,
+    Action = action(kick, vector(TargetPositionX, YPosition))
+    ;
+    VelocityX > 0 ->
+    toPolar(vector(VelocityX, VelocityY), polar(Magnitude, Theta)),
+    toVector(polar(Magnitude, -Theta), Complement),
+    add(vector(XPosition, YPosition), Complement, TargetPosition),
+    Action = action(kick, TargetPosition, 1)
+    ;
+    toPolar(vector(VelocityX, VelocityY), polar(Magnitude, Theta)),
+    toVector(polar(-Magnitude, -Theta), Complement),
+    add(vector(XPosition, YPosition), Complement, TargetPosition),
+    Action = action(kick, TargetPosition, 1).
+    
+isRailgun(agent(_, _, _, _, _, _, controller(railgun))).
+getAgentXPosition(agent(_, _, vector(XPosition, _), _, _, _, _), XPosition).
+
+
+repulsionForce(Position, OtherPosition, RepulsionForce) :-
+    Position == OtherPosition ->
+    random(-1.0, 1.0, RepulsionForce)
+    ;
+    % the 1000 is arbritrary
+    Difference is Position - OtherPosition,
+    RepulsionForce is 1000 / Difference.
