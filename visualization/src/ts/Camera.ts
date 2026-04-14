@@ -72,13 +72,15 @@ export default class Camera {
         agentName: boolean,
         agentRole: boolean,
         ballVelocityLine: boolean,
-        agentVelocityLine: boolean
+        agentVelocityLine: boolean,
+        infoText: boolean
     } = {
             energyBar: true,
             agentName: true,
             agentRole: true,
             ballVelocityLine: false,
-            agentVelocityLine: false
+            agentVelocityLine: false,
+            infoText: true
         }
 
     lastMouseData: {
@@ -162,7 +164,7 @@ export default class Camera {
         this.drawField();
         this.drawBall(gameState);
         this.drawAgents(gameState);
-        this.drawInfoText(gameState);
+        if(this.rendering.infoText) this.drawInfoText(gameState);
     }
 
     drawField() {
@@ -437,6 +439,10 @@ export default class Camera {
             
             case "KeyP":
                 this.playback.toggleRunning();
+                break;
+            
+            case "KeyV":
+                this.rendering.infoText = !this.rendering.infoText;
                 break;
         }
     }

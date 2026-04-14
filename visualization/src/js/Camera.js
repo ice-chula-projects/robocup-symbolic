@@ -52,7 +52,8 @@ export default class Camera {
         agentName: true,
         agentRole: true,
         ballVelocityLine: false,
-        agentVelocityLine: false
+        agentVelocityLine: false,
+        infoText: true
     };
     lastMouseData = {};
     #targetFps = 60;
@@ -122,7 +123,8 @@ export default class Camera {
         this.drawField();
         this.drawBall(gameState);
         this.drawAgents(gameState);
-        this.drawInfoText(gameState);
+        if (this.rendering.infoText)
+            this.drawInfoText(gameState);
     }
     drawField() {
         const context = this.canvas.getContext("2d");
@@ -363,6 +365,9 @@ export default class Camera {
                 break;
             case "KeyP":
                 this.playback.toggleRunning();
+                break;
+            case "KeyV":
+                this.rendering.infoText = !this.rendering.infoText;
                 break;
         }
     }
