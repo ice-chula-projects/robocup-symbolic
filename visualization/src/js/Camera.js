@@ -168,7 +168,7 @@ export default class Camera {
             context.stroke();
         }
     }
-    drawAgent(agent) {
+    drawAgent(agent, gameState) {
         const context = this.canvas.getContext("2d");
         let agentRadius = this.playback.currentGameLog.agentSettings.agentRadius;
         //backwards compatability
@@ -182,8 +182,18 @@ export default class Camera {
         context.closePath();
         context.fill();
         if (this.rendering.agentVelocityLine) {
-            const nextAgent = this.playback.getRelativeState(1).agents[agent.id];
-            const velocity = nextAgent.position.sub(agent.position);
+            const nextGameState = this.playback.getRelativeState(1);
+            let velocity;
+            if (nextGameState.round == gameState.round) {
+                // fake velocity by just getting the difference between next and current position
+                const nextAgent = nextGameState.agents[agent.id];
+                velocity = nextAgent.position.sub(agent.position);
+            }
+            else {
+                // fake velocity during round transitions by pretending the agent continued traveling in the same direction as the previous frame
+                const previousAgent = this.playback.getRelativeState(-1).agents[agent.id];
+                velocity = agent.position.sub(previousAgent.position);
+            }
             // const predictedPosition = this.project(agent.position.add(velocity.normalize().scale(this.agentVelocityLineLength)));
             // context.strokeStyle = Color.lerp(Color.fromCssString(this.agentVelocityLineSlowColor), Color.fromCssString(this.agentVelocityLineFastColor), velocity.length / this.agentVelocityFastThreshold).toCssString();
             const predictedPosition = this.project(agent.position.add(velocity.scale(this.agentVelocityLineScale)));
@@ -265,7 +275,7 @@ export default class Camera {
     }
     drawAgents(gameState) {
         for (const agent of gameState.agents) {
-            this.drawAgent(agent);
+            this.drawAgent(agent, gameState);
         }
     }
     // sets the follow target to an agent or ball if they are close enough

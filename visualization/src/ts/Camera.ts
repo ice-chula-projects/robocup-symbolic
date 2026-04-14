@@ -221,7 +221,7 @@ export default class Camera {
         }
     }
 
-    drawAgent(agent: AgentProcessed) {
+    drawAgent(agent: AgentProcessed, gameState: GameStateProcessed) {
         const context = this.canvas.getContext("2d");
         let agentRadius = this.playback.currentGameLog.agentSettings.agentRadius;
         //backwards compatability
@@ -237,11 +237,23 @@ export default class Camera {
         context.fill();
 
         if (this.rendering.agentVelocityLine) {
-            const nextAgent = this.playback.getRelativeState(1).agents[agent.id];
-            const velocity = nextAgent.position.sub(agent.position);
+            const nextGameState = this.playback.getRelativeState(1);
+            let velocity: Vector2D;
+            
+            if(nextGameState.round == gameState.round){
+                // fake velocity by just getting the difference between next and current position
+                const nextAgent = nextGameState.agents[agent.id];
+                velocity = nextAgent.position.sub(agent.position);
+            }
+            else{
+                // fake velocity during round transitions by pretending the agent continued traveling in the same direction as the previous frame
+                const previousAgent = this.playback.getRelativeState(-1).agents[agent.id];
+                velocity = agent.position.sub(previousAgent.position);
+            }
+            
             // const predictedPosition = this.project(agent.position.add(velocity.normalize().scale(this.agentVelocityLineLength)));
             // context.strokeStyle = Color.lerp(Color.fromCssString(this.agentVelocityLineSlowColor), Color.fromCssString(this.agentVelocityLineFastColor), velocity.length / this.agentVelocityFastThreshold).toCssString();
-
+    
             const predictedPosition = this.project(agent.position.add(velocity.scale(this.agentVelocityLineScale)));
             context.strokeStyle = this.agentVelocityLineColor;
 
@@ -310,8 +322,6 @@ export default class Camera {
         context.font = `${this.infoTextSize}px ${this.font}`;
         context.fillStyle = this.textColor;
 
-
-
         //round and score display
         context.textAlign = "center";
         context.fillText(`Round ${gameState.round}`, this.canvas.width/2, this.infoTextSize + this.infoTextMargin);
@@ -333,7 +343,7 @@ export default class Camera {
 
     drawAgents(gameState: GameStateProcessed) {
         for (const agent of gameState.agents) {
-            this.drawAgent(agent);
+            this.drawAgent(agent, gameState);
         }
     }
 
