@@ -257,10 +257,13 @@ export default class Camera {
         const context = this.canvas.getContext("2d");
         context.font = `${this.infoTextSize}px ${this.font}`;
         context.fillStyle = this.textColor;
-        //round and score display
+        // round and score display
+        // display the next frame's score during transitions since the transition frame is technically 1 frame
+        // before the ball enters the goal
+        const score = this.playback.isRoundTransition ? this.playback.getRelativeState(1).score : gameState.score;
         context.textAlign = "center";
         context.fillText(`Round ${gameState.round}`, this.canvas.width / 2, this.infoTextSize + this.infoTextMargin);
-        context.fillText(`${gameState.score.team0}-${gameState.score.team1}`, this.canvas.width / 2, 2 * this.infoTextSize + this.infoTextMargin);
+        context.fillText(`${score.team0}-${score.team1}`, this.canvas.width / 2, 2 * this.infoTextSize + this.infoTextMargin);
         //show follow target
         if (this.followTarget != CameraFollowTarget.none) {
             const name = this.followTarget == CameraFollowTarget.ball ? "Ball" : gameState.agents[this.followedAgentId].name;
