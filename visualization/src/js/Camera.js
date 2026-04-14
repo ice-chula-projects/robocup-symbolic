@@ -284,7 +284,7 @@ export default class Camera {
         if (this.followTarget != CameraFollowTarget.none) {
             const name = this.followTarget == CameraFollowTarget.ball ? "Ball" : gameState.agents[this.followedAgentId].name;
             context.textAlign = "left";
-            context.fillText(`Currently Following: ${name}`, 0, this.canvas.height);
+            context.fillText(`Currently Following: ${name}`, this.infoTextMargin, this.canvas.height - this.infoTextMargin);
         }
         //show if currently paused
         if (this.playback.running == false) {
