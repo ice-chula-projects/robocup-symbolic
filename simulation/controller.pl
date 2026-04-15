@@ -142,14 +142,7 @@ There is only one midfielder controller, aptly named 'midfield' for the "Top Mid
 */
 control(controller(topmidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
-        Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
-        FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
-        AgentPositionXRelative is AgentPositionX / Width,
-        getDribblePosition(FieldSettings, AgentSettings, Agent, DribblePosition),
-        (isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, DribblePosition), AgentPositionXRelative > 0.40) -> (
-            passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
-        );
-        dribble(FieldSettings, AgentSettings, Agent, Ball, Action)
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
@@ -161,14 +154,7 @@ control(controller(topmidfield), FieldSettings, AgentSettings, Agent, OtherAgent
 
 control(controller(bottommidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
-        Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
-        FieldSettings = fieldSettings(vector(Width, _), _, _, _, _),
-        AgentPositionXRelative is AgentPositionX / Width,
-        getDribblePosition(FieldSettings, AgentSettings, Agent, DribblePosition),
-        (isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, DribblePosition), AgentPositionXRelative > 0.40) -> (
-            passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
-        );
-        dribble(FieldSettings, AgentSettings, Agent, Ball, Action)
+        passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
 
     closestDistanceToBall([Agent | OtherAgents], Ball, Agent) -> 
@@ -683,12 +669,12 @@ getDribblePosition(FieldSettings, AgentSettings, agent(_, _, AgentPosition, _, _
     AgentSettings = agentSettings(_, _, _, deviationSettings(KickAngleDeviation, _, _, _), AgentRadius),
     chooseYDirectionToDribble(FieldSettings, AgentPosition, KickAngleDeviation, Direction),
     DirectionRadians is Direction * (pi / 180),
-    ScaledAgentRadius is AgentRadius * 1.5,
+    ScaledAgentRadius is AgentRadius * 1.25,
     toVector(polar(ScaledAgentRadius, DirectionRadians), DeltaPosition),
     add(AgentPosition, DeltaPosition, TargetPosition).
 
 % Kicks the ball very lightly so the agent is still the closest to the ball, and thus kicks it again
 dribble(FieldSettings, AgentSettings, Agent, Ball, Action) :-
     getDribblePosition(FieldSettings, AgentSettings, Agent, TargetPosition),
-    accountKickTargetForBallVelocity(AgentSettings, 0.30, TargetPosition, Ball, AdjustedTargetPosition),
-    Action = action(kick, AdjustedTargetPosition, 0.30).
+    accountKickTargetForBallVelocity(AgentSettings, 0.15, TargetPosition, Ball, AdjustedTargetPosition),
+    Action = action(kick, AdjustedTargetPosition, 0.15).
