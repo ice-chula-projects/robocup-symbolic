@@ -626,7 +626,7 @@ accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPositi
   % Kick Strength is the magnitude of the velocity change of the ball on kick
   predictTime(AgentSettings, KickStrengthFactor, TargetPosition, Ball, PredictedTravelTime),
 
-  % pretend the ball is still by acting like the target has velocity of BallVe locity in the negative direction
+  % pretend the ball is still by acting like the target has velocity of BallVelocity in the negative direction
   % then kick towards where the target would be
   Ball = ball(_, BallVelocity),
   scale(BallVelocity, -1, TargetVelocity),
