@@ -125,7 +125,7 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
 
     % Go to designated spot if there's nothing to do
     relativeToAbsolute(vector(3/4, 1/2), FieldSettings, DesignatedSpot),
-    (isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, DesignatedSpot)) -> (
+    (isDistanceOverReach(kickReachMultiplier(3.0), AgentSettings, Agent, DesignatedSpot)) -> (
         moveToPosition(movement(sustainable), DesignatedSpot, AgentSettings, Action)
     );
     
@@ -664,13 +664,13 @@ chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_
     AgentPositionYRelative is AgentPositionY / Height,
     AgentPositionYRelative >= 0.60,
     AgentPositionYRelative < 0.80,
-    Direction is KickAngleDeviation / 2.
+    Direction is KickAngleDeviation.
 
 chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_, AgentPositionY), KickAngleDeviation, Direction) :-
     AgentPositionYRelative is AgentPositionY / Height,
     AgentPositionYRelative >= 0.20,
     AgentPositionYRelative < 0.40,
-    Direction is KickAngleDeviation / -2.
+    Direction is KickAngleDeviation.
 
 chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_, AgentPositionY), _KickAngleDeviation, Direction) :-
     AgentPositionYRelative is AgentPositionY / Height,
@@ -683,12 +683,12 @@ getDribblePosition(FieldSettings, AgentSettings, agent(_, _, AgentPosition, _, _
     AgentSettings = agentSettings(_, _, _, deviationSettings(KickAngleDeviation, _, _, _), AgentRadius),
     chooseYDirectionToDribble(FieldSettings, AgentPosition, KickAngleDeviation, Direction),
     DirectionRadians is Direction * (pi / 180),
-    DoubleAgentRadius is AgentRadius * 2,
-    toVector(polar(DoubleAgentRadius, DirectionRadians), DeltaPosition),
+    ScaledAgentRadius is AgentRadius * 1.5,
+    toVector(polar(ScaledAgentRadius, DirectionRadians), DeltaPosition),
     add(AgentPosition, DeltaPosition, TargetPosition).
 
 % Kicks the ball very lightly so the agent is still the closest to the ball, and thus kicks it again
 dribble(FieldSettings, AgentSettings, Agent, Ball, Action) :-
     getDribblePosition(FieldSettings, AgentSettings, Agent, TargetPosition),
-    accountKickTargetForBallVelocity(AgentSettings, 0.25, TargetPosition, Ball, AdjustedTargetPosition),
-    Action = action(kick, AdjustedTargetPosition, 0.25).
+    accountKickTargetForBallVelocity(AgentSettings, 0.30, TargetPosition, Ball, AdjustedTargetPosition),
+    Action = action(kick, AdjustedTargetPosition, 0.30).
