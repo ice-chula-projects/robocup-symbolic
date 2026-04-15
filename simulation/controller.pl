@@ -90,9 +90,7 @@ If they are nearest to the ball, they will attempt to pursue it.
 */
 control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     canKick(AgentSettings, Agent, Ball, 1) -> (
-        Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
         FieldSettings = fieldSettings(vector(Width, Height), _, _, _, _),
-        AgentPositionXRelative is AgentPositionX / Width,
         GoalHeight is Height / 2,
         (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight))) -> (
             kickToGoal(FieldSettings, AgentSettings, Ball, Action)
@@ -107,12 +105,9 @@ control(controller(striker), FieldSettings, AgentSettings, Agent, OtherAgents, B
     isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, PredictedBallPosition) ->
         moveToPosition(movement(adaptive), Agent, PredictedBallPosition, AgentSettings, Action);
 
-    Agent = agent(_, _, _, Energy, _, _, _),
-    AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
-    EnergyThreshold is MaxEnergy * 0.98,
-
+    % Go to designated spot if there's nothing to do
     relativeToAbsolute(vector(3/4, 1/2), FieldSettings, DesignatedSpot),
-    (Energy >= EnergyThreshold, isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, DesignatedSpot)) -> (  % Go to designated spot if there's nothing to do
+    (isDistanceOverReach(kickReachMultiplier(1.0), AgentSettings, Agent, DesignatedSpot)) -> (
         moveToPosition(movement(sustainable), DesignatedSpot, AgentSettings, Action)
     );
     
