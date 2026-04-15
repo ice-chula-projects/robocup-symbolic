@@ -190,18 +190,13 @@ control(controller(back), FieldSettings, AgentSettings, Agent, OtherAgents, Ball
 to moving up and down in a straight line, they will try to approach the ball and pass
 it to one of the three backs. Even if they are the closest to the ball, agents of
 other roles will ignore that and continue to pursue the ball, since the goalkeeper cannot
-move in the X-axis to catch it. That is unless the ball is so near the goalkeeper, then it
-can move outside to kick it but immediately move back
+move in the X-axis to catch it.
 */
 control(controller(goalkeeper), fieldSettings(vector(Width, Height), GoalSize, _, _, _), AgentSettings, Agent, OtherAgents, Ball, Action) :-
     % Will pass the ball to the best (nearest and in front) ally
     canKick(AgentSettings, Agent, Ball, 1) -> (
         passToBestTarget(AgentSettings, 0.65, Agent, OtherAgents, Ball, Action)
     );
-
-    % If the ball is REALLY close, the goalkeeper can nudge it
-    (\+ isDistanceOverReach(kickReachMultiplier(3), AgentSettings, Agent, Ball)) ->
-        moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action);
 
     % Immediately move back if the ball isn't in reach anymore
     Agent = agent(_, _, vector(AgentPositionX, AgentPositionY), _, _, _, _),
