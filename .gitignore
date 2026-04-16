@@ -1,2 +1,3 @@
-gamelogs/
+gamelogs/*
+!gamelogs/.gitkeep
 /.DS_Store
