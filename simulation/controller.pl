@@ -248,7 +248,7 @@ the roles of the midfielders can change into a wing.
 /* TOP DYNAMIC
 
 This role will be rendered as "Top Midfield" to the interface when they are using midfielder AI,
-and a "Top Wing" when they are using wing AI (TODO: Await "NextRole" feature).
+and a "Top Wing" when they are using wing AI.
 */
 control(controller(topdynamic), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     % When the ball is in quadrant 1 or 3, be a top wing
@@ -264,7 +264,7 @@ control(controller(topdynamic), FieldSettings, AgentSettings, Agent, OtherAgents
 /* BOTTOM DYNAMIC
 
 This role will be rendered as "Bottom Midfield" to the interface when they are using midfielder AI,
-and a "Bottom Wing" when they are using wing AI (TODO: Await "NextRole" feature).
+and a "Bottom Wing" when they are using wing AI.
 */
 control(controller(bottomdynamic), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action) :- (
     % When the ball is in quadrant 4 or 2, be a bottom wing
@@ -277,25 +277,6 @@ control(controller(bottomdynamic), FieldSettings, AgentSettings, Agent, OtherAge
     control(controller(bottommidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action)
 ).
 
-% TODO: Implement Pong mode (2 Goalkeepers fighting for the ball)
-control(controller(pongkeeper), fieldSettings(vector(Width, Height),GoalSize,_,_,_), AgentSettings, Agent, _OtherAgents, Ball, Action) :-
-    % If can kick, kick towards the goal
-    canKick(AgentSettings, Agent, Ball, 1) ->
-        AdjustedHeight is 1.5 * Height,
-        NegativeHeight is -0.5 * Height,
-        random(NegativeHeight, AdjustedHeight, RandomPositionY),
-        Action = action(kick, vector(Width, RandomPositionY), 1)
-    ;
-    % It can only move up and down based on goal size
-    naiveFutureBallPosition(Ball, PredictedPosition),
-    PredictedPosition = vector(_, BallPositionY),
-    GoalSizeScaled is GoalSize * Height / 2,
-    MinPositionY is (Height / 2) - GoalSizeScaled,
-    MaxPositionY is (Height / 2) + GoalSizeScaled,
-    clamp(BallPositionY, MinPositionY, MaxPositionY, ClampedPositionY),
-    Action = action(move, vector(0, ClampedPositionY), 1).
-
-% TODO: move these to math.pl
 clamp(X, Min, _, Min) :- X < Min, !.
 clamp(X, _, Max, Max) :- X > Max, !.
 clamp(X, _, _, X).
