@@ -1,4 +1,4 @@
-:- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2, polar/2, toVector/2, toPolar/2, middle/3, dot/3]).
+:- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2, polar/2, toVector/2, toPolar/2, middle/3, dot/3, clamp/4, sign/2]).
 
 vector(X, Y) :-
     number(X),
@@ -70,3 +70,13 @@ middle(V1, V2, Middle) :-
 % Dot product function = |Vector1| * |Vector2| * cos(Theta)
 dot(vector(X1, Y1), vector(X2, Y2), DotProduct) :-
     DotProduct is (X1 * X2) + (Y1 * Y2).
+
+% Clamps X within a range of Min and Max
+clamp(X, Min, _, Min) :- X < Min, !.
+clamp(X, _, Max, Max) :- X > Max, !.
+clamp(X, _, _, X).
+
+% Returns the sign of a number in the form of -1, 0, and +1.
+sign(X, -1) :- X < 0, !.
+sign(X, 0) :- X =:= 0, !.
+sign(_, +1).
