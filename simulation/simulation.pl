@@ -1,3 +1,6 @@
+:- module(simulation, [runSimulation/3, runSimulationWithTimeLimit/4]).
+
+
 :- use_module(math).
 :- use_module(agent).
 :- use_module(controller).
