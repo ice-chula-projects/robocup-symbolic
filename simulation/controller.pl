@@ -277,14 +277,6 @@ control(controller(bottomdynamic), FieldSettings, AgentSettings, Agent, OtherAge
     control(controller(bottommidfield), FieldSettings, AgentSettings, Agent, OtherAgents, Ball, Action)
 ).
 
-clamp(X, Min, _, Min) :- X < Min, !.
-clamp(X, _, Max, Max) :- X > Max, !.
-clamp(X, _, _, X).
-
-sign(X, -1) :- X < 0, !.
-sign(X, 0) :- X =:= 0, !.
-sign(_, +1).
-
 % Predicates for filtering
 agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
 isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
