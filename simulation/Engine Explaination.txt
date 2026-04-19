@@ -34,7 +34,8 @@ and bounces in the opposite direction
 
 Agents:
 Agents are modeled as circles on the field
-each agent has a position and energy
+each agent has a position, energy and team
+where team(0) is the left team and team(1) is the right team
 each agent also has a "Controller", which is responsible for deciding what actions an agent takes
 
 every step:
@@ -84,6 +85,13 @@ the angle of the direction of the kick is also deviation by +/- some degrees
 when an agent moves, the distance traveled is deviated +/- some amount
 when an agent regenerates energy, the energy regenerated is deviated +/- some amount
 these values are defined within the settings
+
+Mirroring: 
+for ease of development, the state of the world passed into agents on team(1) is mirrored along the y axis
+and any actions an agent on team(1) takes is also mirrored along the y axis 
+so that the inputs match up with a agent on team(0)
+this is done so that when implementing the controller, one can simply only implement a controller to work on an agent on team(0)
+and the same controller will also work on an agent on team(1).
 
 Step Resolution Order:
 ball moves
