@@ -314,6 +314,7 @@ findBallTrajectoryIntercept(
 fallbackPosition(current).  % Do nothing, this will be caught by any distance check and get converted into a rest action
 fallbackPosition(home(fieldSettings(_, _, _, _, _))).  % Return to the "home" position as defined by the initialPosition of the agent
 
+% Helper functor that calls findBallTrajectoryIntercept that has a fallback position if the ball is moving away.
 predictBallPosition(fallbackPosition(home(FieldSettings)), Agent, Ball, PredictedBallPosition) :-
     Agent = agent(_, _, _, _, _, HomePositionRelative, _),
     relativeToAbsolute(HomePositionRelative, FieldSettings, HomePosition),
@@ -323,6 +324,7 @@ predictBallPosition(fallbackPosition(current), Agent, Ball, PredictedBallPositio
     Agent = agent(_, _, CurrentPosition, _, _, _, _),
     findBallTrajectoryIntercept(Agent, Ball, CurrentPosition, PredictedBallPosition).
 
+% For goalkeepers, finds the line function of the ball based on its position and velocity and returns the y-intercept
 findYIntercept(
     Height,
     ball(vector(BallPositionX, BallPositionY), vector(BallVelocityX, BallVelocityY)),
@@ -337,24 +339,28 @@ findYIntercept(
     YIntercept is BallPositionY - (M * (BallPositionX))
 ).
 
-% Simulates the ball moving for 5 steps and retuns its position, used for accurate ball-chasing
+% Simulates the ball moving for 5 steps and retuns its position, used for accurate ball-chasing.
 naiveFutureBallPosition(ball(BallPosition, BallVelocity), PredictedPosition) :-
     scale(BallVelocity, 5, ScaledVelocity),
     add(BallPosition, ScaledVelocity, PredictedPosition).
 
+% Helper function that calculates the distance from agent to ball.
 distanceToBall(agent(_, _, AgentPosition, _, _, _, _), ball(BallPosition, _), DistanceToBall) :-
     distance(AgentPosition, BallPosition, DistanceToBall).
 
+% Uses field width and height to get the absolute position from the relative position.
 relativeToAbsolute(vector(PositionXRelative, PositionYRelative), fieldSettings(vector(Width, Height),_,_,_,_), vector(ResultX, ResultY)) :-
     ResultX is PositionXRelative * Width,
     ResultY is PositionYRelative * Height.
-    
+
+% Goes through all allies that aren't the goalkeeper to find who is the nearest to the ball.
 closestDistanceToBall(AllAgents, Ball, ClosestAgent) :-
     exclude(isGoalkeeper, AllAgents, NonGoalKeepers),
     include(agentInTeam(0), NonGoalKeepers, Allies),
     findall(DistanceToBall-A, (member(A, Allies), distanceToBall(A, Ball, DistanceToBall)), Pairs),
     min_member(_Distance-ClosestAgent, Pairs).
 
+% Goes through all allies to find who is the nearest to the goal (X position-wise).
 closestDistanceToGoal(AllAgents, ClosestAgent) :-
     include(agentInTeam(0), AllAgents, Allies),
     findall(PositionX-A, (member(A, Allies), A = agent(_, _, vector(PositionX, _), _, _, _, _)), Pairs),
@@ -391,6 +397,7 @@ chooseDestination(
     Destination = ComputedDestination
 ).
 
+% Used in isDistanceOverReach to define a larger reach.
 kickReachMultiplier(Multiplier) :- float(Multiplier), Multiplier >= 1.0.
 
 % Calculates the distance from an agent to a position and sees if it's in reach of a specific range (KickReach * Multiplier)
@@ -408,6 +415,8 @@ isDistanceOverReach(
 isDistanceOverReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, ball(BallPosition, _)) :-
     isDistanceOverReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, BallPosition).
 
+% Finds the angle of the ball relative to the agent, if the angle is -7.5° to +7.5°, then 
+% disable naive ball prediction and just move to the ball's position.
 isBallMovingTowardsAgent(
     agent(_, _, AgentPosition, _, _, _, _),
     ball(BallPosition, BallVelocity)
@@ -427,6 +436,7 @@ isBallMovingTowardsAgent(
     false
 ).
 
+% Finds the nearest enemy agent and checks if they are between the agent and target position within the range of AgentRadius
 isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, TargetPosition) :-
     AgentSettings = agentSettings(_, _, _, _, AgentRadius),
     Agent = agent(_, _, AgentPosition, _, _, _, _),
@@ -459,6 +469,7 @@ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, TargetPosition
     magnitude(PerpendicularVector, PerpendicularDistance),
     PerpendicularDistance < AgentRadius.
 
+% Helper predicate to decide whether a striker or wing chooses to kick to the goal or not
 shouldKickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agent, OtherAgents) :-
     GoalHeight is Height/2,
     (
@@ -500,13 +511,16 @@ sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
     movementEnergyCost(AgentSettings, SustainableDistance, EnergyRegenerationPerTick),
     SustainableMovementFactor is SustainableDistance / RunMaxDistance.
 
-movement(sustainable).
-movement(dash).
-movement(adaptive).
+% Movement types to simplify the movement factor system.
+movement(sustainable).  % Energy lost is equal to energy recovered
+movement(dash).  % Double the sustainable factor to actively expend energy
+movement(adaptive).  % Chooses between sustainable and dash depending on the situation
 
+% No multiplier for adaptive, since it chooses one instead
 movementFactorMultiplier(sustainable, 1.0).
 movementFactorMultiplier(dash, 2.0).
 
+% Makes a move action to the target position, the adaptive movement type requires an Agent variable.
 moveToPosition(movement(adaptive), agent(_, _, _, Energy, _, _, _), TargetPosition, AgentSettings, Action) :- (
     AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
     EnergyThreshold is MaxEnergy * 3 / 5,
@@ -516,6 +530,7 @@ moveToPosition(movement(adaptive), agent(_, _, _, Energy, _, _, _), TargetPositi
     moveToPosition(movement(dash), TargetPosition, AgentSettings, Action)
 ).
 
+% Simple move action factory that calculates the sustainable movement factor to reduce code duplication.
 moveToPosition(movement(MovementType), TargetPosition, AgentSettings, Action) :-
     MovementType \= adaptive,
     sustainableMovementFactor(AgentSettings, SustainableMovementFactor),
@@ -541,6 +556,7 @@ moveToBall(movement(adaptive), Agent, Ball, AgentSettings, Action) :- (
     moveToBall(movement(sustainable), Agent, Ball, AgentSettings, Action)
 ).
 
+% Simple move action factory, will use naiveFutureBallPosition only if the ball is moving away from the agent. 
 moveToBall(movement(MovementType), Agent, Ball, AgentSettings, Action) :-
     MovementType \= adaptive,
     isBallMovingTowardsAgent(Agent, Ball) -> (
@@ -551,7 +567,7 @@ moveToBall(movement(MovementType), Agent, Ball, AgentSettings, Action) :-
     naiveFutureBallPosition(Ball, PredictedBallPosition),
     moveToPosition(movement(MovementType), PredictedBallPosition, AgentSettings, Action).
 
-
+% Finds a middle position between the ball and a relative position, used by wings and midfielders.
 anchorAt(WidthPercentage, HeightPercentage, ball(BallPosition, _), fieldSettings(vector(Width, Height), _, _, _, _), TargetPosition) :-
     CalculatedWidth is Width * WidthPercentage,
     CalculatedHeight is Height * HeightPercentage,
@@ -559,19 +575,23 @@ anchorAt(WidthPercentage, HeightPercentage, ball(BallPosition, _), fieldSettings
 
 /* Kick action utils */
 
+% Kick action factory that kicks straight to the goal, accounting for ball velocity.
 kickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Ball, Action) :-
     GoalHeight is Height/2,
     accountKickTargetForBallVelocity(AgentSettings, 1, vector(Width,GoalHeight), Ball, AdjustedGoalPosition),
     Action = action(kick, AdjustedGoalPosition, 1).
 
+% Helper functor to find the distance between an agent and another.
 agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
     distance(FirstPosition, SecondPosition, Distance).
 
+% Similar to max_member, but finds the top 2 members.
 topTwoMembers(Max1, Max2, List) :-
     max_member(Max1, List),
     select(Max1, List, Rest),
     max_member(Max2, Rest).
 
+% Finds the top two best pass targets giving every agent a score based on if they are in front and nearby
 topTwoBestPassTargets(Agent, OtherAgents, BestPassTarget, SecondBestPassTarget) :-
     Agent = agent(_, _, vector(AgentPositionX, _), _, _, _, _),
     exclude(isGoalkeeper, OtherAgents, NonGoalKeepers),
@@ -586,12 +606,13 @@ topTwoBestPassTargets(Agent, OtherAgents, BestPassTarget, SecondBestPassTarget) 
 
     topTwoMembers(_BestScore-BestPassTarget, _SecondBestScore-SecondBestPassTarget, Pairs).
 
-% Calculates the time it would take for the ball to reach the target position based on the kicking strength factor
+% Calculates the time it would take for the ball to reach the target position based on the kicking strength factor.
 predictTime(agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _, _), KickStrengthFactor, TargetPosition, ball(BallPosition, _), PredictedTravelTime) :-
     EffectiveKickStrength is KickMaxStrength * KickStrengthFactor,
     distance(BallPosition, TargetPosition, Distance),
     PredictedTravelTime is Distance / EffectiveKickStrength.
 
+% Adjusts the target position to account for the ball's initial velocity.
 accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition) :-
   % Kick Strength is the magnitude of the velocity change of the ball on kick
   predictTime(AgentSettings, KickStrengthFactor, TargetPosition, Ball, PredictedTravelTime),
@@ -603,31 +624,35 @@ accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPositi
   scale(TargetVelocity, PredictedTravelTime, TargetDisplacement),
   add(TargetPosition, TargetDisplacement, AdjustedTargetPosition). 
 
+% Given two agent positions, kick to the better position based on if the first has an agent blocking it.
 chooseBestPassTarget(AgentSettings, Agent, OtherAgents, BestPosition, SecondBestPosition, TargetPosition) :-
     (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, BestPosition)) -> (
         TargetPosition = BestPosition
     );
     TargetPosition = SecondBestPosition.
 
-% Kicks towards the target position by predicting where the ball will be when it reaches the target and kicking towards that point
+% Kicks towards the target position by predicting where the ball will be when it reaches the target and kicking towards that point.
 passToBestTarget(AgentSettings, KickStrengthFactor, Agent, OtherAgents, Ball, Action) :-
     topTwoBestPassTargets(Agent, OtherAgents, agent(_, _, BestPosition, _, _, _, _), agent(_, _, SecondBestPosition, _, _, _, _)),
     chooseBestPassTarget(AgentSettings, Agent, OtherAgents, BestPosition, SecondBestPosition, TargetPosition),
     accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition),
     Action = action(kick, AdjustedTargetPosition, KickStrengthFactor).
 
+% If the Y position is at 60-80%, dribble up.
 chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_, AgentPositionY), KickAngleDeviation, Direction) :-
     AgentPositionYRelative is AgentPositionY / Height,
     AgentPositionYRelative >= 0.60,
     AgentPositionYRelative < 0.80,
     Direction is KickAngleDeviation.
 
+% If the Y position is at 20-40%, dribble down.
 chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_, AgentPositionY), KickAngleDeviation, Direction) :-
     AgentPositionYRelative is AgentPositionY / Height,
     AgentPositionYRelative >= 0.20,
     AgentPositionYRelative < 0.40,
-    Direction is KickAngleDeviation.
+    Direction is -KickAngleDeviation.
 
+% If the Y position is at any other percentage, dribble forward.
 chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_, AgentPositionY), _KickAngleDeviation, Direction) :-
     AgentPositionYRelative is AgentPositionY / Height,
     ((AgentPositionYRelative >= 0.40, AgentPositionYRelative < 0.60) ;
@@ -635,6 +660,7 @@ chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_
     AgentPositionYRelative < 0.20),
     Direction = 0.
 
+% Finds the position to kick at in a specific direction to ensure it is nearby the agent.
 getDribblePosition(FieldSettings, AgentSettings, agent(_, _, AgentPosition, _, _, _, _), TargetPosition) :-
     AgentSettings = agentSettings(_, _, _, deviationSettings(KickAngleDeviation, _, _, _), AgentRadius),
     chooseYDirectionToDribble(FieldSettings, AgentPosition, KickAngleDeviation, Direction),
