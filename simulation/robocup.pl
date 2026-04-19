@@ -22,7 +22,7 @@ runSimulation :-
         ),
         energySettings(
             500,  % max energy, the max energy an agent is able to store
-            10,   % energy regeneration per tick, how much energy on average does the agent regenerate every simulation tick
+            10    % energy regeneration per tick, how much energy on average does the agent regenerate every simulation tick
         ),
         deviationSettings(
             3,    % kick angle deviation, when an agent kicks in a direction, the actual kick direction is deviated by +/- this many degrees 
@@ -62,4 +62,7 @@ runSimulation :-
         agent('Orpheus', 'Bottom Midfield', _, _, team(0), vector(0.35, 0.85), controller(bottomdynamic)),
         agent('Penny', 'Bottom Midfield',   _, _, team(1), vector(0.35, 0.85), controller(bottomdynamic))
     ],
-    runSimulation(FieldSettings, AgentSettings, Agents).
+    runSimulation(FieldSettings, AgentSettings, Agents),
+    writeln("simulation concluded"),
+    writeln("a gamelog has been generated under ../gamelogs/"),
+    writeln("upload the log file to https://agareverie.github.io/robocup-symbolic/visualization/ for a visualization").
