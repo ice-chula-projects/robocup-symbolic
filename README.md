@@ -21,11 +21,11 @@
 ?- runSimulation.
 ```
 
-To edit the parameters of the simulation, one can open ‘robocup.pl’ and directly modify the parameters inside the runSimulation predicate. Comments can be found next to each option describing what they do.
+To edit the parameters of the simulation, one can open `robocup.pl` and directly modify the parameters inside the runSimulation predicate. Comments can be found next to each option describing what they do.
 
 ### Format
 
-A JSON file with the format name `game_XXXXXX.json` is generated inside a
+A JSON file with the format name `game_XXXXXXXXXX.json` is generated inside a
 separate directory containing the game logs, when the function is run.
 
 ### Visualization
@@ -33,6 +33,12 @@ separate directory containing the game logs, when the function is run.
 ![Robocup Simulation Example](docs/robocup.gif)
 
 The representation of the simulation output is through a 2D canvas inside an [HTML webpage](https://agareverie.github.io/robocup-symbolic/visualization/). Since the game is generated in a JSON file, a visualizer using JavaScript can load the file directly. Additionally, customization settings and camera controls are provided.
+
+**Visualizer Options**:
+
+- Show Name, Role, Energy Bar, Agent Velocity and Ball Velocity
+- Team Color Customization
+- Playback Controls (Play/Pause and Speed)
 
 **Controls**:
 
