@@ -89,6 +89,12 @@ To introduce randomness to the simulation, _agent actions are all slightly proba
 
 These values are defined within the settings.
 
+## Mirroring
+
+For ease of development, the state of the world passed into agents on `team(1)` is mirrored along the y-axis. Any actions an agent on `team(1)` takes is also mirrored along the y-axis so that the inputs match up with an agent on `team(0)`.
+
+This is done so that when implementing the controller, one can simply only implement a controller to work on an agent on `team(0)` and the same controller will also work on an agent on `team(1)`.
+
 ## Step Resolution Order
 
 1. Ball moves.
