@@ -511,12 +511,10 @@ sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
 
 movement(sustainable).
 movement(dash).
-movement(instant).
 movement(adaptive).
 
 movementFactorMultiplier(sustainable, 1.0).
 movementFactorMultiplier(dash, 2.0).
-movementFactorMultiplier(instant, 4.0).
 
 moveToPosition(movement(adaptive), agent(_, _, _, Energy, _, _, _), TargetPosition, AgentSettings, Action) :- (
     AgentSettings = agentSettings(_, _, energySettings(MaxEnergy, _), _, _),
