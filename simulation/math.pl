@@ -1,5 +1,7 @@
 :- module(math, [vector/2, withinRange/3, add/3, sub/3, scale/3, magnitude/2, distance/3, normalize/2, polar/2, toVector/2, toPolar/2, middle/3, dot/3, clamp/4, sign/2]).
 
+% this file contains many predicates related to math
+
 vector(X, Y) :-
     number(X),
     number(Y).

@@ -1,9 +1,9 @@
 :- module(simulation, [runSimulation/3, runSimulationWithTimeLimit/4]).
-
-
 :- use_module(math).
 :- use_module(agent).
 :- use_module(controller).
+
+% this file contains predicates related to running the simulation along with ball physics 
 
 % fieldSettings contains any settings not related to the agents
 % vector(Width, Height) - width and height of the field

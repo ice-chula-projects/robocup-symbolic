@@ -2,6 +2,8 @@
 :- use_module(math).
 :- use_module(agent).
 
+% this file contains predicates related to determining what action the agent takes every tick 
+
 % moves towards the target position using MovementFactor to determine
 % how far to attempt to move from [0, RunMaxDistance]
 % if it fails (not enough energy) will default to resting

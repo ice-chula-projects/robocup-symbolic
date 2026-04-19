@@ -2,6 +2,7 @@
 :- use_module(math).
 :- use_module(controller, [controller/1]).
 
+% this file contains predicates related to agent action resolution and agent physics
 
 % KickReach - Max distance an agent is able to kick
 % KickMaxStrength - Max Magnitude of the velocity change of the ball after a kick
