@@ -383,7 +383,7 @@ naiveFutureBallPosition(ball(BallPosition, BallVelocity), PredictedPosition) :-
 
 /* DISTANCE / POSITION CHECKS */
 
-% Helper function that calculates the distance from agent to ball.
+% Helper functor that calculates the distance from agent to ball.
 distanceToBall(agent(_, _, AgentPosition, _, _, _, _), ball(BallPosition, _), DistanceToBall) :-
     distance(AgentPosition, BallPosition, DistanceToBall).
 
