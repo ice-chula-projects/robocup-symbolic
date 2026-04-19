@@ -280,7 +280,13 @@ control(controller(bottomdynamic), FieldSettings, AgentSettings, Agent, OtherAge
 agentInTeam(Team, agent(_, _, _, _, team(Team), _, _)).
 isGoalkeeper(agent(_, _, _, _, _, _, controller(goalkeeper))).
 
-/* Move action utils */
+% Uses field width and height to get the absolute position from the relative position.
+relativeToAbsolute(vector(PositionXRelative, PositionYRelative), fieldSettings(vector(Width, Height),_,_,_,_), vector(ResultX, ResultY)) :-
+    ResultX is PositionXRelative * Width,
+    ResultY is PositionYRelative * Height.
+
+/* BALL PREDICTION */
+
 % Uses a dot product projection to intersect the ball's trajectory with the agent's position
 findBallTrajectoryIntercept(
     agent(_, _, AgentPosition, _, _, _, _),
@@ -339,33 +345,6 @@ findYIntercept(
     YIntercept is BallPositionY - (M * (BallPositionX))
 ).
 
-% Simulates the ball moving for 5 steps and retuns its position, used for accurate ball-chasing.
-naiveFutureBallPosition(ball(BallPosition, BallVelocity), PredictedPosition) :-
-    scale(BallVelocity, 5, ScaledVelocity),
-    add(BallPosition, ScaledVelocity, PredictedPosition).
-
-% Helper function that calculates the distance from agent to ball.
-distanceToBall(agent(_, _, AgentPosition, _, _, _, _), ball(BallPosition, _), DistanceToBall) :-
-    distance(AgentPosition, BallPosition, DistanceToBall).
-
-% Uses field width and height to get the absolute position from the relative position.
-relativeToAbsolute(vector(PositionXRelative, PositionYRelative), fieldSettings(vector(Width, Height),_,_,_,_), vector(ResultX, ResultY)) :-
-    ResultX is PositionXRelative * Width,
-    ResultY is PositionYRelative * Height.
-
-% Goes through all allies that aren't the goalkeeper to find who is the nearest to the ball.
-closestDistanceToBall(AllAgents, Ball, ClosestAgent) :-
-    exclude(isGoalkeeper, AllAgents, NonGoalKeepers),
-    include(agentInTeam(0), NonGoalKeepers, Allies),
-    findall(DistanceToBall-A, (member(A, Allies), distanceToBall(A, Ball, DistanceToBall)), Pairs),
-    min_member(_Distance-ClosestAgent, Pairs).
-
-% Goes through all allies to find who is the nearest to the goal (X position-wise).
-closestDistanceToGoal(AllAgents, ClosestAgent) :-
-    include(agentInTeam(0), AllAgents, Allies),
-    findall(PositionX-A, (member(A, Allies), A = agent(_, _, vector(PositionX, _), _, _, _, _)), Pairs),
-    max_member(_PositionX-ClosestAgent, Pairs).
-
 % Decides between traveling to the computed destination or the home position depending on the direction of the movement.
 chooseDestination(
     agent(_, _, AgentPosition, _, _, HomePositionRelative, _), 
@@ -397,6 +376,34 @@ chooseDestination(
     Destination = ComputedDestination
 ).
 
+% Simulates the ball moving for 5 steps and retuns its position, used for accurate ball-chasing.
+naiveFutureBallPosition(ball(BallPosition, BallVelocity), PredictedPosition) :-
+    scale(BallVelocity, 5, ScaledVelocity),
+    add(BallPosition, ScaledVelocity, PredictedPosition).
+
+/* DISTANCE / POSITION CHECKS */
+
+% Helper function that calculates the distance from agent to ball.
+distanceToBall(agent(_, _, AgentPosition, _, _, _, _), ball(BallPosition, _), DistanceToBall) :-
+    distance(AgentPosition, BallPosition, DistanceToBall).
+
+% Helper functor to find the distance between an agent and another.
+agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
+    distance(FirstPosition, SecondPosition, Distance).
+
+% Goes through all allies that aren't the goalkeeper to find who is the nearest to the ball.
+closestDistanceToBall(AllAgents, Ball, ClosestAgent) :-
+    exclude(isGoalkeeper, AllAgents, NonGoalKeepers),
+    include(agentInTeam(0), NonGoalKeepers, Allies),
+    findall(DistanceToBall-A, (member(A, Allies), distanceToBall(A, Ball, DistanceToBall)), Pairs),
+    min_member(_Distance-ClosestAgent, Pairs).
+
+% Goes through all allies to find who is the nearest to the goal (X position-wise).
+closestDistanceToGoal(AllAgents, ClosestAgent) :-
+    include(agentInTeam(0), AllAgents, Allies),
+    findall(PositionX-A, (member(A, Allies), A = agent(_, _, vector(PositionX, _), _, _, _, _)), Pairs),
+    max_member(_PositionX-ClosestAgent, Pairs).
+
 % Used in isDistanceOverReach to define a larger reach.
 kickReachMultiplier(Multiplier) :- float(Multiplier), Multiplier >= 1.0.
 
@@ -414,6 +421,36 @@ isDistanceOverReach(
 % Overload for ball distance
 isDistanceOverReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, ball(BallPosition, _)) :-
     isDistanceOverReach(kickReachMultiplier(Multiplier), AgentSettings, Agent, BallPosition).
+
+% (Width, 0) is top right (Q1)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 1) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX >= HalfWidth,
+    BallPositionY < HalfHeight.
+
+% (0, 0) is top left (Q2)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 2) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX < HalfWidth,
+    BallPositionY < HalfHeight.
+
+% (0, Height) is bottom left (Q3)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 3) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX < HalfWidth,
+    BallPositionY >= HalfHeight.
+
+% (Width, Height) is bottom right (Q4)
+ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 4) :-
+    HalfWidth is Width / 2,
+    HalfHeight is Height / 2,
+    BallPositionX >= HalfWidth,
+    BallPositionY >= HalfHeight.
+
+/* ANGLE / TRAJECTORY CHECKS */
 
 % Finds the angle of the ball relative to the agent, if the angle is -7.5° to +7.5°, then 
 % disable naive ball prediction and just move to the ball's position.
@@ -469,41 +506,7 @@ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, TargetPosition
     magnitude(PerpendicularVector, PerpendicularDistance),
     PerpendicularDistance < AgentRadius.
 
-% Helper predicate to decide whether a striker or wing chooses to kick to the goal or not
-shouldKickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agent, OtherAgents) :-
-    GoalHeight is Height/2,
-    (
-        closestDistanceToGoal([Agent | OtherAgents], Agent) ,
-        \+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight))
-    ).
-
-% (Width, 0) is top right (Q1)
-ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 1) :-
-    HalfWidth is Width / 2,
-    HalfHeight is Height / 2,
-    BallPositionX >= HalfWidth,
-    BallPositionY < HalfHeight.
-
-% (0, 0) is top left (Q2)
-ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 2) :-
-    HalfWidth is Width / 2,
-    HalfHeight is Height / 2,
-    BallPositionX < HalfWidth,
-    BallPositionY < HalfHeight.
-
-% (0, Height) is bottom left (Q3)
-ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 3) :-
-    HalfWidth is Width / 2,
-    HalfHeight is Height / 2,
-    BallPositionX < HalfWidth,
-    BallPositionY >= HalfHeight.
-
-% (Width, Height) is bottom right (Q4)
-ballQuadrant(fieldSettings(vector(Width, Height), _, _, _, _), ball(vector(BallPositionX, BallPositionY), _), 4) :-
-    HalfWidth is Width / 2,
-    HalfHeight is Height / 2,
-    BallPositionX >= HalfWidth,
-    BallPositionY >= HalfHeight.
+/* MOVE ACTION UTILS */
 
 % Finds the movement factor that allows the agent to move using the same energy as it decays
 sustainableMovementFactor(AgentSettings, SustainableMovementFactor) :-
@@ -573,7 +576,35 @@ anchorAt(WidthPercentage, HeightPercentage, ball(BallPosition, _), fieldSettings
     CalculatedHeight is Height * HeightPercentage,
     middle(BallPosition, vector(CalculatedWidth, CalculatedHeight), TargetPosition).
 
-/* Kick action utils */
+/* KICK ACTION UTILS */
+
+% Calculates the time it would take for the ball to reach the target position based on the kicking strength factor.
+predictTime(agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _, _), KickStrengthFactor, TargetPosition, ball(BallPosition, _), PredictedTravelTime) :-
+    EffectiveKickStrength is KickMaxStrength * KickStrengthFactor,
+    distance(BallPosition, TargetPosition, Distance),
+    PredictedTravelTime is Distance / EffectiveKickStrength.
+
+% Adjusts the target position to account for the ball's initial velocity.
+accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition) :-
+  % Kick Strength is the magnitude of the velocity change of the ball on kick
+  predictTime(AgentSettings, KickStrengthFactor, TargetPosition, Ball, PredictedTravelTime),
+
+  % pretend the ball is still by acting like the target has velocity of BallVelocity in the negative direction
+  % then kick towards where the target would be
+  Ball = ball(_, BallVelocity),
+  scale(BallVelocity, -1, TargetVelocity),
+  scale(TargetVelocity, PredictedTravelTime, TargetDisplacement),
+  add(TargetPosition, TargetDisplacement, AdjustedTargetPosition). 
+
+/* KICK TO GOAL */
+
+% Helper predicate to decide whether a striker or wing chooses to kick to the goal or not
+shouldKickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Agent, OtherAgents) :-
+    GoalHeight is Height/2,
+    (
+        closestDistanceToGoal([Agent | OtherAgents], Agent) ,
+        \+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, vector(Width, GoalHeight))
+    ).
 
 % Kick action factory that kicks straight to the goal, accounting for ball velocity.
 kickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Ball, Action) :-
@@ -581,9 +612,7 @@ kickToGoal(fieldSettings(vector(Width, Height), _, _, _, _), AgentSettings, Ball
     accountKickTargetForBallVelocity(AgentSettings, 1, vector(Width,GoalHeight), Ball, AdjustedGoalPosition),
     Action = action(kick, AdjustedGoalPosition, 1).
 
-% Helper functor to find the distance between an agent and another.
-agentDistance(agent(_, _, FirstPosition, _, _, _, _), agent(_, _, SecondPosition, _, _, _, _), Distance) :-
-    distance(FirstPosition, SecondPosition, Distance).
+/* PASSING */
 
 % Similar to max_member, but finds the top 2 members.
 topTwoMembers(Max1, Max2, List) :-
@@ -606,24 +635,6 @@ topTwoBestPassTargets(Agent, OtherAgents, BestPassTarget, SecondBestPassTarget) 
 
     topTwoMembers(_BestScore-BestPassTarget, _SecondBestScore-SecondBestPassTarget, Pairs).
 
-% Calculates the time it would take for the ball to reach the target position based on the kicking strength factor.
-predictTime(agentSettings(kickSettings(_, KickMaxStrength, _), _, _, _, _), KickStrengthFactor, TargetPosition, ball(BallPosition, _), PredictedTravelTime) :-
-    EffectiveKickStrength is KickMaxStrength * KickStrengthFactor,
-    distance(BallPosition, TargetPosition, Distance),
-    PredictedTravelTime is Distance / EffectiveKickStrength.
-
-% Adjusts the target position to account for the ball's initial velocity.
-accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition) :-
-  % Kick Strength is the magnitude of the velocity change of the ball on kick
-  predictTime(AgentSettings, KickStrengthFactor, TargetPosition, Ball, PredictedTravelTime),
-
-  % pretend the ball is still by acting like the target has velocity of BallVelocity in the negative direction
-  % then kick towards where the target would be
-  Ball = ball(_, BallVelocity),
-  scale(BallVelocity, -1, TargetVelocity),
-  scale(TargetVelocity, PredictedTravelTime, TargetDisplacement),
-  add(TargetPosition, TargetDisplacement, AdjustedTargetPosition). 
-
 % Given two agent positions, kick to the better position based on if the first has an agent blocking it.
 chooseBestPassTarget(AgentSettings, Agent, OtherAgents, BestPosition, SecondBestPosition, TargetPosition) :-
     (\+ isEnemyAgentBlockingTrajectory(AgentSettings, Agent, OtherAgents, BestPosition)) -> (
@@ -637,6 +648,8 @@ passToBestTarget(AgentSettings, KickStrengthFactor, Agent, OtherAgents, Ball, Ac
     chooseBestPassTarget(AgentSettings, Agent, OtherAgents, BestPosition, SecondBestPosition, TargetPosition),
     accountKickTargetForBallVelocity(AgentSettings, KickStrengthFactor, TargetPosition, Ball, AdjustedTargetPosition),
     Action = action(kick, AdjustedTargetPosition, KickStrengthFactor).
+
+/* DRIBBLING */
 
 % If the Y position is at 60-80%, dribble up.
 chooseYDirectionToDribble(fieldSettings(vector(_, Height), _, _, _, _), vector(_, AgentPositionY), KickAngleDeviation, Direction) :-
