@@ -31,10 +31,10 @@ energySettings(MaxEnergy, EnergyRegenerationPerTick) :-
     number(EnergyRegenerationPerTick),
     EnergyRegenerationPerTick > 0.
 
-% KickAngleDeviation - An agent's kick is deviated +- KickAngleDeviation degrees every kick
-% KickStrengthDeviation - An agent's kick strength is deviated by +- KickStrengthDeviation * 100%, doesnt effect energy spent.
-% RunDistanceDeviation - An agent's run distance is deviated by +- RunDistanceDeviation * 100%, doesnt effect energy spent.
-% EnergyRegenerationDeviation - An agent's energy regeneration is deviated by  +- EnergyRegenerationDeviation * 100%
+% KickAngleDeviation - An agent's kick is deviated ± KickAngleDeviation degrees every kick
+% KickStrengthDeviation - An agent's kick strength is deviated by ± KickStrengthDeviation * 100%, doesnt effect energy spent.
+% RunDistanceDeviation - An agent's run distance is deviated by ± RunDistanceDeviation * 100%, doesnt effect energy spent.
+% EnergyRegenerationDeviation - An agent's energy regeneration is deviated by  ± EnergyRegenerationDeviation * 100%
 deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation) :-
     number(KickAngleDeviation),
     KickAngleDeviation >= 0,
@@ -73,7 +73,7 @@ canKick(AgentSettings, agent(_, _, Position, Energy, _, _, _), ball(BallPosition
     Energy >= EnergyCost.
 
 % performs a kick (does not do check if the agent can actually kick the ball as that is expected to be handled by the engine)
-% Adds a vector with length EffectiveKickStrength +- deviation, in the direction of KickTowardsPosition +- angle deviation
+% Adds a vector with length EffectiveKickStrength ± deviation, in the direction of KickTowardsPosition ± angle deviation
 % to the velocity of the ball
 % then subtracts the appropriate amount of energy and add energy regeneration
 % finally applies energy regeneration
@@ -119,7 +119,7 @@ moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPositio
     NextPosition = TargetPosition.
 
 % case distance is out of max range
-% move the agent a distance of EffectiveRunMaxDistance +- deviation in the direction of TargetPosition
+% move the agent a distance of EffectiveRunMaxDistance ± deviation in the direction of TargetPosition
 % and subtract energy according to the intended travel distance
 moveTowards(AgentSettings, Position, TargetPosition, DistanceFactor, NextPosition, EnergyCost) :-
     AgentSettings = agentSettings(_ , runSettings(RunMaxDistance, _), _, _, _),
@@ -138,7 +138,7 @@ rest(AgentSettings, agent(Name, Role, Position, Energy, Team, RelativeInitialPos
     regenerateEnergy(AgentSettings, Energy, NextEnergy_1),
     regenerateEnergy(AgentSettings, NextEnergy_1, NextEnergy).
 
-% adds EnergyRegenerationPerTick +- deviation to the energy
+% adds EnergyRegenerationPerTick ± deviation to the energy
 regenerateEnergy(agentSettings(_, _, energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(_, _, _, EnergyRegenerationDeviation), _), Energy, NextEnergy) :-
     deviate(EnergyRegenerationDeviation, EnergyRegenerationPerTick, EnergyRegenerated),
     NextEnergy_1 is Energy + EnergyRegenerated,
@@ -215,8 +215,8 @@ deviateKickStrength(agentSettings(_, _, _, deviationSettings(_, KickStrengthDevi
 deviateRunDistance(agentSettings(_, _, _, deviationSettings(_, _, RunDistanceDeviation, _), _), RunDistance, NextRunDistance) :-
     deviate(RunDistanceDeviation, RunDistance, NextRunDistance).
 
-% deviates Value by +- MaxDeviation * 100%.
-% so result is Value +- n%
+% deviates Value by ± MaxDeviation * 100%.
+% so result is Value ± n%
 deviate(MaxDeviation, Value, DeviatedValue) :-
     LowerBound is 1.0 - MaxDeviation,
     UpperBound is 1.0 + MaxDeviation,

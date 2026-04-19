@@ -25,14 +25,13 @@ runSimulation :-
             10    % energy regeneration per tick, how much energy on average does the agent regenerate every simulation tick
         ),
         deviationSettings(
-            3,    % kick angle deviation, when an agent kicks in a direction, the actual kick direction is deviated by +/- this many degrees 
-            0.2,  % kick strength deviation, when an agent kicks at some strength, the actual strength is +/- this many percent (where 0.2 means 20%)
-            0.25, % run distance deviation, when an agent runs some distance, the actual distance ran is deviated by +/- this many percent (where 0.2 means 20%)
-            0.25  % energy regeneration deviation, when an agent regenerates energy, the actual energy regenerated is deviated by +/- this many percent (where 0.2 means 20%)
+            3,    % kick angle deviation, when an agent kicks in a direction, the actual kick direction is deviated by ± this many degrees 
+            0.2,  % kick strength deviation, when an agent kicks at some strength, the actual strength is ± this many percent (where 0.2 means 20%)
+            0.25, % run distance deviation, when an agent runs some distance, the actual distance ran is deviated by ± this many percent (where 0.2 means 20%)
+            0.25  % energy regeneration deviation, when an agent regenerates energy, the actual energy regenerated is deviated by ± this many percent (where 0.2 means 20%)
         ),
         10        % agent radius, the radius of the circles that the agents are modeled as for collision detection.
     ),
-
     % agents are defined as:
     % agent(Name, Role, CurrentPosition, CurrentEnergy, Team, InitialPosition, Controller)
     % Name and Role are only used in the visualization system
