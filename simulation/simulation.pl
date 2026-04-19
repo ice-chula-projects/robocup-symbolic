@@ -85,12 +85,14 @@ runSimulation(state(fieldSettings(_, _, _, _, WinningScore), _, gameState(_, _, 
     Team1 >= WinningScore;
     Time >= TimeLimit.
 
-runSimulation(InitialState, [NextGameState | GameStates], Time, TimeLimit) :-
-    step(InitialState, NextState),
+% recursion step, repeatedly calls step until the base case is true
+runSimulation(State, [NextGameState | GameStates], Time, TimeLimit) :-
+    step(State, NextState),
     NextState = state(_, _, NextGameState),
     NextTime is Time + 1,
     runSimulation(NextState, GameStates, NextTime, TimeLimit).
 
+% exports the given states into a JSON format
 exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWallDampening, WinningScore), agentSettings(kickSettings(KickReach, KickMaxStrength, KickMaxEnergy), runSettings(RunMaxDistance, RunMaxEnergy), energySettings(MaxEnergy, EnergyRegenerationPerTick), deviationSettings(KickAngleDeviation, KickStrengthDeviation, RunDistanceDeviation, EnergyRegenerationDeviation), AgentRadius), GameStates) :-
     gameStatesToJson(GameStates, GameStateJsons),
     GameJson = json{
@@ -138,6 +140,7 @@ exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWal
     json_write_dict(Stream, GameJson, [width(0)]),
     close(Stream).
 
+% converts a list of gameStates into a JSON list
 gameStatesToJson([], []).
 gameStatesToJson([gameState(ball(vector(BallPositionX, BallPositionY), vector(BallVelocityX, BallVelocityY)), Agents, Round, score(Team0, Team1)) | T], [GameStateJson | GameStateJsons]) :-
     agentsToJson(Agents, AgentsJson),
@@ -161,6 +164,7 @@ gameStatesToJson([gameState(ball(vector(BallPositionX, BallPositionY), vector(Ba
     },
     gameStatesToJson(T, GameStateJsons).
 
+% converts a list of agents into a JSON list
 agentsToJson([], []).
 agentsToJson([agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team), _, _) | T], [AgentJson | AgentJsons]) :-
     AgentJson = json{
@@ -175,16 +179,17 @@ agentsToJson([agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team)
     },
     agentsToJson(T, AgentJsons).
 
-%creates a directory if it doesnt exist
+% creates a directory if it doesnt exist
 ensureDirectoryExists(Dir) :-
     exists_directory(Dir)->
     true
     ;
     make_directory(Dir).
 
-% round order:
+% takes in a State and converts it into NextState
+% round resolution order:
 % ball moves
-% goal checking
+% goal is checked
 % if goal:
 % award points and reset round
 % if no goal:
@@ -273,7 +278,7 @@ updateBallWallBounce(fieldSettings(vector(Width, Height), _, _, BallWallDampenin
     %bounce in y axis
     updateBounce(Height, BallWallDampening, BallY, VelocityY, NextBallY, NextVelocityY).
 
-%boeunces along an axis (assumes there is a wall at 0 and wallposition)
+% bounces along an axis (assumes there is a wall at 0 and wallposition)
 updateBounce(WallPosition, BallWallDampening, Position, Velocity, NextPosition, NextVelocity) :-
     Position < 0 -> 
     NextVelocity is -1 * BallWallDampening * Velocity,

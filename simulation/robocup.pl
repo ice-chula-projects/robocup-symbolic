@@ -1,6 +1,6 @@
 :- use_module(simulation, [runSimulation/3]).
 
-% runs the simulation with predefined default settings
+% runs the simulation with the defined settings
 runSimulation :- 
     FieldSettings = fieldSettings(
         vector(1200,1000), % field size
@@ -62,6 +62,7 @@ runSimulation :-
         agent('Orpheus', 'Bottom Midfield', _, _, team(0), vector(0.35, 0.85), controller(bottomdynamic)),
         agent('Penny', 'Bottom Midfield',   _, _, team(1), vector(0.35, 0.85), controller(bottomdynamic))
     ],
+    
     runSimulation(FieldSettings, AgentSettings, Agents),
     writeln("simulation concluded"),
     writeln("a gamelog has been generated under ../gamelogs/"),

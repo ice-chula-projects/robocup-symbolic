@@ -16,8 +16,7 @@ action(move, vector(_, _), MovementFactor) :-
 action(kick, vector(_, _), KickStrengthFactor) :-
     withinRange(0, 1, KickStrengthFactor).
 
-% increases energy regeneration for this tick by
-% RestFactor
+% regenerates energy twice instead of only once this tick
 action(rest).
 
 controller(_).
