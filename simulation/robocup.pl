@@ -62,7 +62,11 @@ runSimulation :-
         agent('Penny', 'Bottom Midfield',   _, _, team(1), vector(0.35, 0.85), controller(bottomdynamic))
     ],
     
+    writeln("\33[1;33mSimulation is running...\33[0m"),
     runSimulation(FieldSettings, AgentSettings, Agents),
-    writeln("simulation concluded"),
-    writeln("a gamelog has been generated under ../gamelogs/"),
-    writeln("upload the log file to https://agareverie.github.io/robocup-symbolic/visualization/ for a visualization").
+    nl,
+    writeln("\33[1;32mSimulation concluded.\33[0m"),
+    sleep(0.75),
+    nl,
+    writeln("A \33[33mgamelog\33[0m has been generated under '\33[1;33m../gamelogs/\33[0m'."),
+    writeln("Upload the log file to \33[36;4mhttps://agareverie.github.io/robocup-symbolic/visualization/\33[0m to view."). 
