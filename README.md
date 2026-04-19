@@ -1,6 +1,6 @@
 # **Implementing an Elementary RoboCup** using **Symbolic AI** and **Logic Programming** with **Prolog**
 
-<center>This project is focused on the development of an elementary RoboCup program using knowledge of Symbolic AI, HTML, JavaScript & **Prolog**. The objective of this Prolog-based RoboCup is to produce a virtual model of a soccer game where players interact with the ball and agents are assigned distinct roles aligned with behaviors.</center>
+<center>This project is focused on the development of an elementary RoboCup program using knowledge of Symbolic AI, HTML, JavaScript & <strong>Prolog</strong>. The objective of this Prolog-based RoboCup is to produce a virtual model of a soccer game where players interact with the ball and agents are assigned distinct roles aligned with behaviors.</center>
 
 ## **Group Members**
 
