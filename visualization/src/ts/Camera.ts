@@ -365,10 +365,11 @@ export default class Camera {
         if(this.playback.isRoundTransition){
             context.font = `${2*this.infoTextSize}px ${this.font}`;
 
+            const winningScore = this.playback.currentGameLog.fieldSettings.winningScore;
             let scoreText: string;
             //score during transition frame is 1 frame ahead
-            if(score.team0 > gameState.score.team0) scoreText = "Team 0 Scores!";
-            else if(score.team1 > gameState.score.team1) scoreText = "Team 1 Scores!";
+            if(score.team0 > gameState.score.team0) scoreText = score.team0 == winningScore ? "Team 0 Wins!" : "Team 0 Scores!";
+            else if(score.team1 > gameState.score.team1) scoreText = score.team1 == winningScore ? "Team 1 Wins!" : "Team 1 Scores!";
             else scoreText = "Time's Up!";
 
             context.textAlign = "center";
