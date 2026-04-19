@@ -125,6 +125,7 @@ exportState(fieldSettings(vector(Width,Height), GoalSize, BallDampening, BallWal
         },
         gameStates: GameStateJsons
     },
+    ensureDirectoryExists("../gamelogs"),
     get_time(Time),
     TimeInt is round(Time),
     number_string(TimeInt, TimeString),
@@ -170,6 +171,14 @@ agentsToJson([agent(Name, Role, vector(PositionX, PositionY), Energy, team(Team)
         team: Team
     },
     agentsToJson(T, AgentJsons).
+
+%creates a directory if it doesnt exist
+ensureDirectoryExists(Dir) :-
+    exists_directory(Dir)->
+    true
+    ;
+    make_directory(Dir).
+
 % round order:
 % ball moves
 % goal checking
@@ -261,7 +270,7 @@ updateBallWallBounce(fieldSettings(vector(Width, Height), _, _, BallWallDampenin
     %bounce in y axis
     updateBounce(Height, BallWallDampening, BallY, VelocityY, NextBallY, NextVelocityY).
 
-%bounces along an axis (assumes there is a wall at 0 and wallposition)
+%boeunces along an axis (assumes there is a wall at 0 and wallposition)
 updateBounce(WallPosition, BallWallDampening, Position, Velocity, NextPosition, NextVelocity) :-
     Position < 0 -> 
     NextVelocity is -1 * BallWallDampening * Velocity,
