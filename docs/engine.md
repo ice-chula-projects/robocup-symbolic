@@ -4,9 +4,9 @@ Below is a high-level explanation of the engine without getting too deep into im
 
 ## Overview
 
-A game is modeled as it's settings and a series of states, starting from an `InitialState` and eventually ending on a `FinalState`.
+A game is modeled as its settings and a series of states, starting from an `InitialState` and eventually ending on a `FinalState`.
 
-When the simulation is ran, the program simply calls _step/4_, this predicate takes in the settings and a State and converts it into NextState by updating the State according to the rules of the simulation.
+When the simulation is run, the program simply calls _step/4_, this predicate takes in the settings and a State and converts it into NextState by updating the State according to the rules of the simulation.
 
 This process is done recursively until the exit condition has been reached (that being a team has a winning score). These series of states are then exported to a JSON file for use in the visualization system.
 
@@ -19,18 +19,18 @@ In the field, there are 2 types of objects: the **ball** and the **agents**.
 ### Ball Physics
 
 - The ball is modeled as a _position_ and a _velocity_.
-- Every step, the ball's velocity is added to it's position.
+- Every step, the ball's velocity is added to its position.
 - Then, a check is performed to see if the ball is within a goal.
 - If it is, the simulation is reset and the score is awarded. Otherwise the simulation continues.
 - Every step, friction is modeled by multiplying a value to the ball's velocity. This value is part of the settings.
-- When the ball collides with a wall, it loses some of it's velocity (specified in settings) and bounces in the opposite direction.
+- When the ball collides with a wall, it loses some of its velocity (specified in settings) and bounces in the opposite direction.
 
 ### Agents
 
 Agents are modeled as circles on the field, each agent has a position, energy, and also a _Controller_ which is responsible for deciding what actions an agent takes every step:
 
 - The state of the world, including things like the ball and other agents are passed into the agent's controller.
-- That controller is then responsible for deciding what action the agent will take this step.
+- That controller is then responsible for deciding what action the agent will take.
 - The agent takes the action decided by the controller.
 - The agent regenerates energy.
 - agent collisions are resolved.
