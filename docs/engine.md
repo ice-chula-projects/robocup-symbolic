@@ -82,10 +82,10 @@ The agent will regenerate energy twice instead of only once in this step.
 
 To introduce randomness to the simulation, _agent actions are all slightly probabilistic_. Whenever an agent takes an action, some amount of randomness is applied to the result, those being:
 
-- The angle of the direction of the kick is also deviation by ± `KickAngleDeviation`.
-- When an agent kicks, the strength is deviated ± `KickStrengthDeviation`.
-- When an agent moves, the distance traveled is deviated ± `RunDistanceDeviation`.
-- When an agent regenerates energy, the energy regenerated is deviated ± `EnergyRegenerationDeviation`.
+- The angle of the direction of the kick is also deviation by ± `KickAngleDeviation` * 100%.
+- When an agent kicks, the strength is deviated ± `KickStrengthDeviation` * 100%.
+- When an agent moves, the distance traveled is deviated ± `RunDistanceDeviation` * 100%.
+- When an agent regenerates energy, the energy regenerated is deviated ± `EnergyRegenerationDeviation` * 100%.
 
 These values are defined within the settings.
 
