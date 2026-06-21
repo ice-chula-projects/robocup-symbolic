@@ -32,7 +32,7 @@ separate directory containing the game logs, when the function is run.
 
 ![Robocup Simulation Example](docs/robocup.gif)
 
-The representation of the simulation output is through a 2D canvas inside an [HTML webpage](https://agareverie.github.io/robocup-symbolic/visualization/). Since the game is generated in a JSON file, a visualizer using JavaScript can load the file directly. Additionally, customization settings and camera controls are provided.
+The representation of the simulation output is through a 2D canvas inside an [HTML webpage]([https://agareverie.github.io/robocup-symbolic/visualization/](https://ice-chula-projects.github.io/robocup-symbolic/visualization/)). Since the game is generated in a JSON file, a visualizer using JavaScript can load the file directly. Additionally, customization settings and camera controls are provided.
 
 **Visualizer Options**:
 
